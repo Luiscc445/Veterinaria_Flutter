@@ -2,7 +2,7 @@
 -- ESQUEMA COMPLETO BASE DE DATOS - SISTEMA RAMBOPET
 -- Sistema de Gestión Integral para Clínica Veterinaria
 -- ============================================================================
--- Versión: 1.0.0
+-- Versión: 1.0.2 (Corregido - Sin errores de inmutabilidad)
 -- Fecha: Noviembre 2025
 -- Base de Datos: PostgreSQL (Supabase)
 -- ============================================================================
@@ -83,11 +83,12 @@ CREATE TABLE users (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
--- Índices para users
+-- Índices para users (SIN predicados con funciones no inmutables)
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_rol ON users(rol);
 CREATE INDEX idx_users_auth_user_id ON users(auth_user_id);
-CREATE INDEX idx_users_activo ON users(activo) WHERE deleted_at IS NULL;
+CREATE INDEX idx_users_activo ON users(activo);
+CREATE INDEX idx_users_deleted ON users(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.2 TABLA: tutores (Dueños de mascotas)
@@ -111,6 +112,7 @@ CREATE TABLE tutores (
 -- Índices para tutores
 CREATE INDEX idx_tutores_user_id ON tutores(user_id);
 CREATE INDEX idx_tutores_dni ON tutores(dni);
+CREATE INDEX idx_tutores_deleted ON tutores(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.3 TABLA: mascotas (Pacientes)
@@ -146,7 +148,8 @@ CREATE INDEX idx_mascotas_tutor_id ON mascotas(tutor_id);
 CREATE INDEX idx_mascotas_estado ON mascotas(estado);
 CREATE INDEX idx_mascotas_especie ON mascotas(especie);
 CREATE INDEX idx_mascotas_microchip ON mascotas(microchip);
-CREATE INDEX idx_mascotas_activo ON mascotas(activo) WHERE deleted_at IS NULL;
+CREATE INDEX idx_mascotas_activo ON mascotas(activo);
+CREATE INDEX idx_mascotas_deleted ON mascotas(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.4 TABLA: servicios (Catálogo de servicios veterinarios)
@@ -167,7 +170,8 @@ CREATE TABLE servicios (
 
 -- Índices para servicios
 CREATE INDEX idx_servicios_tipo ON servicios(tipo);
-CREATE INDEX idx_servicios_activo ON servicios(activo) WHERE deleted_at IS NULL;
+CREATE INDEX idx_servicios_activo ON servicios(activo);
+CREATE INDEX idx_servicios_deleted ON servicios(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.5 TABLA: profesionales (Médicos veterinarios)
@@ -189,7 +193,8 @@ CREATE TABLE profesionales (
 -- Índices para profesionales
 CREATE INDEX idx_profesionales_user_id ON profesionales(user_id);
 CREATE INDEX idx_profesionales_matricula ON profesionales(matricula_profesional);
-CREATE INDEX idx_profesionales_activo ON profesionales(activo) WHERE deleted_at IS NULL;
+CREATE INDEX idx_profesionales_activo ON profesionales(activo);
+CREATE INDEX idx_profesionales_deleted ON profesionales(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.6 TABLA: consultorios (Salas de atención)
@@ -209,7 +214,8 @@ CREATE TABLE consultorios (
 
 -- Índices para consultorios
 CREATE INDEX idx_consultorios_numero ON consultorios(numero);
-CREATE INDEX idx_consultorios_activo ON consultorios(activo) WHERE deleted_at IS NULL;
+CREATE INDEX idx_consultorios_activo ON consultorios(activo);
+CREATE INDEX idx_consultorios_deleted ON consultorios(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.7 TABLA: citas (Sistema de reservas)
@@ -249,6 +255,7 @@ CREATE INDEX idx_citas_consultorio_id ON citas(consultorio_id);
 CREATE INDEX idx_citas_fecha_hora ON citas(fecha_hora);
 CREATE INDEX idx_citas_estado ON citas(estado);
 CREATE INDEX idx_citas_fecha_estado ON citas(fecha_hora, estado);
+CREATE INDEX idx_citas_deleted ON citas(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.8 TABLA: historias_clinicas (HCE - Historia Clínica Electrónica)
@@ -267,6 +274,7 @@ CREATE TABLE historias_clinicas (
 -- Índices para historias_clinicas
 CREATE INDEX idx_historias_mascota_id ON historias_clinicas(mascota_id);
 CREATE INDEX idx_historias_numero ON historias_clinicas(numero_historia);
+CREATE INDEX idx_historias_deleted ON historias_clinicas(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.9 TABLA: episodios (Consultas/Eventos individuales)
@@ -301,6 +309,7 @@ CREATE INDEX idx_episodios_cita_id ON episodios(cita_id);
 CREATE INDEX idx_episodios_profesional_id ON episodios(profesional_id);
 CREATE INDEX idx_episodios_fecha ON episodios(fecha_episodio);
 CREATE INDEX idx_episodios_tipo ON episodios(tipo_episodio);
+CREATE INDEX idx_episodios_deleted ON episodios(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.10 TABLA: adjuntos (Archivos, imágenes, documentos)
@@ -324,6 +333,7 @@ CREATE TABLE adjuntos (
 CREATE INDEX idx_adjuntos_episodio_id ON adjuntos(episodio_id);
 CREATE INDEX idx_adjuntos_mascota_id ON adjuntos(mascota_id);
 CREATE INDEX idx_adjuntos_tipo ON adjuntos(tipo_adjunto);
+CREATE INDEX idx_adjuntos_deleted ON adjuntos(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.11 TABLA: farmacos (Catálogo de medicamentos)
@@ -353,7 +363,8 @@ CREATE TABLE farmacos (
 -- Índices para farmacos
 CREATE INDEX idx_farmacos_nombre_comercial ON farmacos(nombre_comercial);
 CREATE INDEX idx_farmacos_nombre_generico ON farmacos(nombre_generico);
-CREATE INDEX idx_farmacos_activo ON farmacos(activo) WHERE deleted_at IS NULL;
+CREATE INDEX idx_farmacos_activo ON farmacos(activo);
+CREATE INDEX idx_farmacos_deleted ON farmacos(deleted_at);
 
 -- ----------------------------------------------------------------------------
 -- 3.12 TABLA: lotes_farmacos (Control de stock y vencimientos)
@@ -378,13 +389,14 @@ CREATE TABLE lotes_farmacos (
     CONSTRAINT cantidad_coherente CHECK (cantidad_actual <= cantidad_inicial)
 );
 
--- Índices para lotes_farmacos
+-- Índices para lotes_farmacos (SIN predicados problemáticos)
 CREATE INDEX idx_lotes_farmaco_id ON lotes_farmacos(farmaco_id);
 CREATE INDEX idx_lotes_numero_lote ON lotes_farmacos(numero_lote);
 CREATE INDEX idx_lotes_fecha_vencimiento ON lotes_farmacos(fecha_vencimiento);
-CREATE INDEX idx_lotes_activo ON lotes_farmacos(activo) WHERE deleted_at IS NULL;
-CREATE INDEX idx_lotes_vencidos ON lotes_farmacos(fecha_vencimiento) WHERE fecha_vencimiento < CURRENT_DATE;
-CREATE INDEX idx_lotes_por_vencer ON lotes_farmacos(fecha_vencimiento) WHERE fecha_vencimiento BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days';
+CREATE INDEX idx_lotes_activo ON lotes_farmacos(activo);
+CREATE INDEX idx_lotes_deleted ON lotes_farmacos(deleted_at);
+-- Índice simple para búsquedas de vencimiento (sin predicado WHERE con CURRENT_DATE)
+CREATE INDEX idx_lotes_vencimiento_activo ON lotes_farmacos(fecha_vencimiento, activo);
 
 -- ----------------------------------------------------------------------------
 -- 3.13 TABLA: inventario_movimientos (Trazabilidad de entradas/salidas)
@@ -643,7 +655,44 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ----------------------------------------------------------------------------
--- 4.7 FUNCIÓN: Obtener próximas citas de una mascota
+-- 4.7 FUNCIÓN: Obtener lotes vencidos o por vencer
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION obtener_lotes_vencimiento(dias_adelante INTEGER DEFAULT 90)
+RETURNS TABLE (
+    lote_id UUID,
+    farmaco_nombre VARCHAR,
+    numero_lote VARCHAR,
+    fecha_vencimiento DATE,
+    dias_para_vencer INTEGER,
+    cantidad_actual INTEGER,
+    estado_vencimiento TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        l.id,
+        f.nombre_comercial,
+        l.numero_lote,
+        l.fecha_vencimiento,
+        (l.fecha_vencimiento - CURRENT_DATE)::INTEGER,
+        l.cantidad_actual,
+        CASE
+            WHEN l.fecha_vencimiento < CURRENT_DATE THEN 'VENCIDO'
+            WHEN l.fecha_vencimiento <= CURRENT_DATE + dias_adelante THEN 'POR VENCER'
+            ELSE 'VIGENTE'
+        END
+    FROM lotes_farmacos l
+    INNER JOIN farmacos f ON l.farmaco_id = f.id
+    WHERE l.activo = TRUE
+      AND l.deleted_at IS NULL
+      AND l.cantidad_actual > 0
+      AND l.fecha_vencimiento <= CURRENT_DATE + dias_adelante
+    ORDER BY l.fecha_vencimiento ASC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ----------------------------------------------------------------------------
+-- 4.8 FUNCIÓN: Obtener próximas citas de una mascota
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION obtener_proximas_citas_mascota(mascota_uuid UUID, limite INTEGER DEFAULT 5)
 RETURNS TABLE (
@@ -675,7 +724,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ----------------------------------------------------------------------------
--- 4.8 FUNCIÓN: Validar disponibilidad de cita
+-- 4.9 FUNCIÓN: Validar disponibilidad de cita
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION validar_disponibilidad_cita(
     profesional_uuid UUID,
@@ -770,22 +819,22 @@ CREATE POLICY "Admin acceso total a users" ON users
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
 -- Usuarios ven su propio perfil
 CREATE POLICY "Usuarios ven su perfil" ON users
     FOR SELECT
-    USING (auth.uid() = id);
+    USING (auth_user_id = auth.uid());
 
 -- Usuarios actualizan su propio perfil (excepto rol)
 CREATE POLICY "Usuarios actualizan su perfil" ON users
     FOR UPDATE
-    USING (auth.uid() = id)
+    USING (auth_user_id = auth.uid())
     WITH CHECK (
-        auth.uid() = id AND
-        rol = (SELECT rol FROM users WHERE id = auth.uid()) -- No pueden cambiar su rol
+        auth_user_id = auth.uid() AND
+        rol = (SELECT rol FROM users WHERE auth_user_id = auth.uid())
     );
 
 -- ----------------------------------------------------------------------------
@@ -797,19 +846,27 @@ CREATE POLICY "Admin y recepción acceso total a tutores" ON tutores
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol IN ('admin', 'recepcion')
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol IN ('admin', 'recepcion')
         )
     );
 
 -- Tutores ven su propio registro
 CREATE POLICY "Tutores ven su registro" ON tutores
     FOR SELECT
-    USING (user_id = auth.uid());
+    USING (
+        EXISTS (
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND id = tutores.user_id
+        )
+    );
 
 -- Tutores actualizan su propio registro
 CREATE POLICY "Tutores actualizan su registro" ON tutores
     FOR UPDATE
-    USING (user_id = auth.uid());
+    USING (
+        EXISTS (
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND id = tutores.user_id
+        )
+    );
 
 -- Médicos ven tutores de sus pacientes
 CREATE POLICY "Médicos ven tutores de pacientes" ON tutores
@@ -820,7 +877,7 @@ CREATE POLICY "Médicos ven tutores de pacientes" ON tutores
             INNER JOIN profesionales p ON u.id = p.user_id
             INNER JOIN citas c ON p.id = c.profesional_id
             INNER JOIN mascotas m ON c.mascota_id = m.id
-            WHERE u.id = auth.uid() AND m.tutor_id = tutores.id AND u.rol = 'medico'
+            WHERE u.auth_user_id = auth.uid() AND m.tutor_id = tutores.id AND u.rol = 'medico'
         )
     );
 
@@ -833,7 +890,7 @@ CREATE POLICY "Admin y recepción acceso total a mascotas" ON mascotas
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol IN ('admin', 'recepcion')
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol IN ('admin', 'recepcion')
         )
     );
 
@@ -842,7 +899,9 @@ CREATE POLICY "Tutores ven sus mascotas" ON mascotas
     FOR SELECT
     USING (
         EXISTS (
-            SELECT 1 FROM tutores WHERE user_id = auth.uid() AND id = mascotas.tutor_id
+            SELECT 1 FROM users u
+            INNER JOIN tutores t ON u.id = t.user_id
+            WHERE u.auth_user_id = auth.uid() AND t.id = mascotas.tutor_id
         )
     );
 
@@ -851,7 +910,9 @@ CREATE POLICY "Tutores crean mascotas" ON mascotas
     FOR INSERT
     WITH CHECK (
         EXISTS (
-            SELECT 1 FROM tutores WHERE user_id = auth.uid() AND id = tutor_id
+            SELECT 1 FROM users u
+            INNER JOIN tutores t ON u.id = t.user_id
+            WHERE u.auth_user_id = auth.uid() AND t.id = tutor_id
         )
     );
 
@@ -860,7 +921,9 @@ CREATE POLICY "Tutores actualizan sus mascotas" ON mascotas
     FOR UPDATE
     USING (
         EXISTS (
-            SELECT 1 FROM tutores WHERE user_id = auth.uid() AND id = mascotas.tutor_id
+            SELECT 1 FROM users u
+            INNER JOIN tutores t ON u.id = t.user_id
+            WHERE u.auth_user_id = auth.uid() AND t.id = mascotas.tutor_id
         ) AND estado = 'pendiente'
     );
 
@@ -872,7 +935,7 @@ CREATE POLICY "Médicos ven mascotas de sus citas" ON mascotas
             SELECT 1 FROM users u
             INNER JOIN profesionales p ON u.id = p.user_id
             INNER JOIN citas c ON p.id = c.profesional_id
-            WHERE u.id = auth.uid() AND c.mascota_id = mascotas.id AND u.rol = 'medico'
+            WHERE u.auth_user_id = auth.uid() AND c.mascota_id = mascotas.id AND u.rol = 'medico'
         )
     );
 
@@ -885,7 +948,7 @@ CREATE POLICY "Admin y recepción acceso total a citas" ON citas
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol IN ('admin', 'recepcion')
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol IN ('admin', 'recepcion')
         )
     );
 
@@ -894,7 +957,9 @@ CREATE POLICY "Tutores ven sus citas" ON citas
     FOR SELECT
     USING (
         EXISTS (
-            SELECT 1 FROM tutores WHERE user_id = auth.uid() AND id = citas.tutor_id
+            SELECT 1 FROM users u
+            INNER JOIN tutores t ON u.id = t.user_id
+            WHERE u.auth_user_id = auth.uid() AND t.id = citas.tutor_id
         )
     );
 
@@ -903,7 +968,9 @@ CREATE POLICY "Tutores crean citas" ON citas
     FOR INSERT
     WITH CHECK (
         EXISTS (
-            SELECT 1 FROM tutores WHERE user_id = auth.uid() AND id = tutor_id
+            SELECT 1 FROM users u
+            INNER JOIN tutores t ON u.id = t.user_id
+            WHERE u.auth_user_id = auth.uid() AND t.id = tutor_id
         )
     );
 
@@ -912,7 +979,9 @@ CREATE POLICY "Tutores cancelan sus citas" ON citas
     FOR UPDATE
     USING (
         EXISTS (
-            SELECT 1 FROM tutores WHERE user_id = auth.uid() AND id = citas.tutor_id
+            SELECT 1 FROM users u
+            INNER JOIN tutores t ON u.id = t.user_id
+            WHERE u.auth_user_id = auth.uid() AND t.id = citas.tutor_id
         ) AND estado NOT IN ('atendida')
     )
     WITH CHECK (estado = 'cancelada');
@@ -924,7 +993,7 @@ CREATE POLICY "Médicos ven sus citas" ON citas
         EXISTS (
             SELECT 1 FROM users u
             INNER JOIN profesionales p ON u.id = p.user_id
-            WHERE u.id = auth.uid() AND p.id = citas.profesional_id AND u.rol = 'medico'
+            WHERE u.auth_user_id = auth.uid() AND p.id = citas.profesional_id AND u.rol = 'medico'
         )
     );
 
@@ -935,7 +1004,7 @@ CREATE POLICY "Médicos actualizan sus citas" ON citas
         EXISTS (
             SELECT 1 FROM users u
             INNER JOIN profesionales p ON u.id = p.user_id
-            WHERE u.id = auth.uid() AND p.id = citas.profesional_id AND u.rol = 'medico'
+            WHERE u.auth_user_id = auth.uid() AND p.id = citas.profesional_id AND u.rol = 'medico'
         )
     );
 
@@ -948,7 +1017,7 @@ CREATE POLICY "Admin acceso total a historias" ON historias_clinicas
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
@@ -959,7 +1028,8 @@ CREATE POLICY "Tutores ven historias de sus mascotas" ON historias_clinicas
         EXISTS (
             SELECT 1 FROM mascotas m
             INNER JOIN tutores t ON m.tutor_id = t.id
-            WHERE t.user_id = auth.uid() AND m.id = historias_clinicas.mascota_id
+            INNER JOIN users u ON t.user_id = u.id
+            WHERE u.auth_user_id = auth.uid() AND m.id = historias_clinicas.mascota_id
         )
     );
 
@@ -971,7 +1041,7 @@ CREATE POLICY "Médicos acceso a historias de sus pacientes" ON historias_clinic
             SELECT 1 FROM users u
             INNER JOIN profesionales p ON u.id = p.user_id
             INNER JOIN citas c ON p.id = c.profesional_id
-            WHERE u.id = auth.uid() AND c.mascota_id = historias_clinicas.mascota_id AND u.rol = 'medico'
+            WHERE u.auth_user_id = auth.uid() AND c.mascota_id = historias_clinicas.mascota_id AND u.rol = 'medico'
         )
     );
 
@@ -980,7 +1050,7 @@ CREATE POLICY "Admin acceso total a episodios" ON episodios
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
@@ -991,7 +1061,8 @@ CREATE POLICY "Tutores ven episodios de sus mascotas" ON episodios
             SELECT 1 FROM historias_clinicas hc
             INNER JOIN mascotas m ON hc.mascota_id = m.id
             INNER JOIN tutores t ON m.tutor_id = t.id
-            WHERE t.user_id = auth.uid() AND hc.id = episodios.historia_clinica_id
+            INNER JOIN users u ON t.user_id = u.id
+            WHERE u.auth_user_id = auth.uid() AND hc.id = episodios.historia_clinica_id
         )
     );
 
@@ -1001,7 +1072,7 @@ CREATE POLICY "Médicos gestionan sus episodios" ON episodios
         EXISTS (
             SELECT 1 FROM users u
             INNER JOIN profesionales p ON u.id = p.user_id
-            WHERE u.id = auth.uid() AND p.id = episodios.profesional_id AND u.rol = 'medico'
+            WHERE u.auth_user_id = auth.uid() AND p.id = episodios.profesional_id AND u.rol = 'medico'
         )
     );
 
@@ -1018,7 +1089,7 @@ CREATE POLICY "Solo admin gestiona fármacos" ON farmacos
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
@@ -1031,7 +1102,7 @@ CREATE POLICY "Solo admin gestiona lotes" ON lotes_farmacos
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
@@ -1042,7 +1113,7 @@ CREATE POLICY "Médicos crean consumos" ON consumos_farmacos
         EXISTS (
             SELECT 1 FROM users u
             INNER JOIN profesionales p ON u.id = p.user_id
-            WHERE u.id = auth.uid() AND p.id = consumos_farmacos.prescrito_por AND u.rol = 'medico'
+            WHERE u.auth_user_id = auth.uid() AND p.id = consumos_farmacos.prescrito_por AND u.rol = 'medico'
         )
     );
 
@@ -1050,7 +1121,7 @@ CREATE POLICY "Admin ve todos los consumos" ON consumos_farmacos
     FOR SELECT
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol IN ('admin', 'medico')
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol IN ('admin', 'medico')
         )
     );
 
@@ -1060,7 +1131,8 @@ CREATE POLICY "Tutores ven consumos de sus mascotas" ON consumos_farmacos
         EXISTS (
             SELECT 1 FROM mascotas m
             INNER JOIN tutores t ON m.tutor_id = t.id
-            WHERE t.user_id = auth.uid() AND m.id = consumos_farmacos.mascota_id
+            INNER JOIN users u ON t.user_id = u.id
+            WHERE u.auth_user_id = auth.uid() AND m.id = consumos_farmacos.mascota_id
         )
     );
 
@@ -1072,7 +1144,7 @@ CREATE POLICY "Solo admin ve auditoría" ON auditoria
     FOR SELECT
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
@@ -1089,7 +1161,7 @@ CREATE POLICY "Solo admin gestiona servicios" ON servicios
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
@@ -1102,7 +1174,7 @@ CREATE POLICY "Solo admin gestiona profesionales" ON profesionales
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
@@ -1115,7 +1187,7 @@ CREATE POLICY "Admin y recepción gestionan consultorios" ON consultorios
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol IN ('admin', 'recepcion')
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol IN ('admin', 'recepcion')
         )
     );
 
@@ -1127,7 +1199,7 @@ CREATE POLICY "Admin acceso total a adjuntos" ON adjuntos
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND rol = 'admin'
+            SELECT 1 FROM users WHERE auth_user_id = auth.uid() AND rol = 'admin'
         )
     );
 
@@ -1137,7 +1209,8 @@ CREATE POLICY "Tutores ven adjuntos de sus mascotas" ON adjuntos
         EXISTS (
             SELECT 1 FROM mascotas m
             INNER JOIN tutores t ON m.tutor_id = t.id
-            WHERE t.user_id = auth.uid() AND m.id = adjuntos.mascota_id
+            INNER JOIN users u ON t.user_id = u.id
+            WHERE u.auth_user_id = auth.uid() AND m.id = adjuntos.mascota_id
         )
     );
 
@@ -1148,12 +1221,64 @@ CREATE POLICY "Médicos gestionan adjuntos de sus episodios" ON adjuntos
             SELECT 1 FROM users u
             INNER JOIN profesionales p ON u.id = p.user_id
             INNER JOIN episodios e ON p.id = e.profesional_id
-            WHERE u.id = auth.uid() AND e.id = adjuntos.episodio_id AND u.rol = 'medico'
+            WHERE u.auth_user_id = auth.uid() AND e.id = adjuntos.episodio_id AND u.rol = 'medico'
         )
     );
 
 -- ============================================================================
--- 7. COMENTARIOS EN TABLAS Y COLUMNAS (Documentación)
+-- 7. VISTAS ÚTILES PARA CONSULTAS
+-- ============================================================================
+
+-- Vista: Lotes vencidos o por vencer en los próximos 90 días
+CREATE OR REPLACE VIEW vista_lotes_vencimiento AS
+SELECT
+    l.id,
+    f.nombre_comercial,
+    f.nombre_generico,
+    l.numero_lote,
+    l.fecha_vencimiento,
+    (l.fecha_vencimiento - CURRENT_DATE)::INTEGER AS dias_para_vencer,
+    l.cantidad_actual,
+    l.ubicacion_almacen,
+    CASE
+        WHEN l.fecha_vencimiento < CURRENT_DATE THEN 'VENCIDO'
+        WHEN l.fecha_vencimiento <= CURRENT_DATE + INTERVAL '30 days' THEN 'CRÍTICO'
+        WHEN l.fecha_vencimiento <= CURRENT_DATE + INTERVAL '90 days' THEN 'ALERTA'
+        ELSE 'VIGENTE'
+    END AS estado_vencimiento
+FROM lotes_farmacos l
+INNER JOIN farmacos f ON l.farmaco_id = f.id
+WHERE l.activo = TRUE
+  AND l.deleted_at IS NULL
+  AND l.cantidad_actual > 0
+ORDER BY l.fecha_vencimiento ASC;
+
+-- Vista: Stock actual por fármaco
+CREATE OR REPLACE VIEW vista_stock_farmacos AS
+SELECT
+    f.id,
+    f.nombre_comercial,
+    f.nombre_generico,
+    f.unidad_medida,
+    f.stock_minimo,
+    COALESCE(SUM(l.cantidad_actual), 0) AS stock_total,
+    CASE
+        WHEN COALESCE(SUM(l.cantidad_actual), 0) = 0 THEN 'SIN STOCK'
+        WHEN COALESCE(SUM(l.cantidad_actual), 0) < f.stock_minimo THEN 'BAJO'
+        ELSE 'NORMAL'
+    END AS estado_stock
+FROM farmacos f
+LEFT JOIN lotes_farmacos l ON f.id = l.farmaco_id
+    AND l.activo = TRUE
+    AND l.deleted_at IS NULL
+    AND l.fecha_vencimiento > CURRENT_DATE
+WHERE f.activo = TRUE
+  AND f.deleted_at IS NULL
+GROUP BY f.id, f.nombre_comercial, f.nombre_generico, f.unidad_medida, f.stock_minimo
+ORDER BY f.nombre_comercial;
+
+-- ============================================================================
+-- 8. COMENTARIOS EN TABLAS Y COLUMNAS (Documentación)
 -- ============================================================================
 
 COMMENT ON TABLE users IS 'Usuarios del sistema integrados con Supabase Auth';
@@ -1176,8 +1301,9 @@ COMMENT ON COLUMN consumos_farmacos.descontado_inventario IS 'TRUE cuando se ha 
 -- FIN DEL ESQUEMA
 -- ============================================================================
 
--- Para ejecutar este esquema:
+-- INSTRUCCIONES DE USO:
 -- 1. Copia todo este contenido
 -- 2. Ve a Supabase Dashboard > SQL Editor
 -- 3. Pega y ejecuta (puede tomar algunos segundos)
 -- 4. Verifica que todas las tablas, funciones y políticas se crearon correctamente
+-- 5. Las vistas y funciones adicionales te ayudarán con reportes y alertas
