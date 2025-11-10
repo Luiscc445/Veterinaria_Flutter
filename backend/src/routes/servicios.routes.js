@@ -1,11 +1,14 @@
 import express from 'express';
 import { authenticate } from '../middlewares/authenticate.js';
+import {
+  obtenerServicios,
+  obtenerServicioPorId
+} from '../controllers/servicios.controller.js';
 
 const router = express.Router();
 router.use(authenticate);
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Endpoint de servicios en desarrollo' });
-});
+router.get('/', obtenerServicios);
+router.get('/:id', obtenerServicioPorId);
 
 export default router;

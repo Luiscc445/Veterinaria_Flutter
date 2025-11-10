@@ -5,13 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../constants/app_constants.dart';
 import 'supabase_config.dart';
 
-// Placeholder screens - Debes crear estos archivos en features
+// Screens
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
-// import '../../features/home/presentation/pages/home_page.dart';
-// import '../../features/mascotas/presentation/pages/mascotas_page.dart';
-// import '../../features/citas/presentation/pages/citas_page.dart';
+import '../../features/home/presentation/pages/home_page.dart';
 
 /// Provider del router
 final routerProvider = Provider<GoRouter>((ref) {
@@ -54,13 +52,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Home routes
       GoRoute(
         path: AppConstants.homeRoute,
-        builder: (context, state) => const PlaceholderPage(title: 'Home'),
+        builder: (context, state) => const HomePage(),
       ),
 
       // Mascotas routes
       GoRoute(
-        path: AppConstants.mascotasRoute,
-        builder: (context, state) => const PlaceholderPage(title: 'Mascotas'),
+        path: '/mascotas/nueva',
+        builder: (context, state) => const PlaceholderPage(title: 'Nueva Mascota'),
+      ),
+      GoRoute(
+        path: '/mascotas/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return PlaceholderPage(title: 'Detalle Mascota $id');
+        },
       ),
 
       // Citas routes
