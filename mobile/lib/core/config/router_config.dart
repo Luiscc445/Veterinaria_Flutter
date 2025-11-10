@@ -11,6 +11,8 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/mascotas/presentation/pages/mascota_form_page.dart';
+import '../../features/citas/presentation/pages/agendar_cita_page.dart';
+import '../../features/citas/presentation/pages/cita_detail_page.dart';
 
 /// Provider del router
 final routerProvider = Provider<GoRouter>((ref) {
@@ -78,8 +80,15 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Citas routes
       GoRoute(
-        path: AppConstants.citasRoute,
-        builder: (context, state) => const PlaceholderPage(title: 'Citas'),
+        path: '/citas/nueva',
+        builder: (context, state) => const AgendarCitaPage(),
+      ),
+      GoRoute(
+        path: '/citas/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return CitaDetailPage(citaId: id);
+        },
       ),
 
       // Historial routes

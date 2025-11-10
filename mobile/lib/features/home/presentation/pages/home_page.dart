@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/config/supabase_config.dart';
 import '../../../mascotas/presentation/pages/mascotas_list_page.dart';
+import '../../../citas/presentation/pages/citas_list_page.dart';
 
 /// Página principal con navegación bottom bar
 class HomePage extends StatefulWidget {
@@ -19,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const HomeTab(),
     const MascotasListPage(),
-    const CitasTab(),
+    const CitasListPage(),
     const PerfilTab(),
   ];
 
@@ -129,7 +130,7 @@ class HomeTab extends StatelessWidget {
                   subtitle: 'Nueva cita',
                   color: Colors.green,
                   onTap: () {
-                    // TODO: Ir a agendar cita
+                    context.push('/citas/nueva');
                   },
                 ),
                 _QuickAccessCard(
@@ -233,21 +234,6 @@ class _QuickAccessCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Tab de Citas (placeholder)
-class CitasTab extends StatelessWidget {
-  const CitasTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.misCitas)),
-      body: const Center(
-        child: Text('Módulo de Citas - En desarrollo'),
       ),
     );
   }
