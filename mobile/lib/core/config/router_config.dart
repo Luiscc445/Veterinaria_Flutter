@@ -10,6 +10,7 @@ import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/mascotas/presentation/pages/mascota_form_page.dart';
 
 /// Provider del router
 final routerProvider = Provider<GoRouter>((ref) {
@@ -58,13 +59,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Mascotas routes
       GoRoute(
         path: '/mascotas/nueva',
-        builder: (context, state) => const PlaceholderPage(title: 'Nueva Mascota'),
+        builder: (context, state) => const MascotaFormPage(),
       ),
       GoRoute(
         path: '/mascotas/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return PlaceholderPage(title: 'Detalle Mascota $id');
+        },
+      ),
+      GoRoute(
+        path: '/mascotas/:id/editar',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return MascotaFormPage(mascotaId: id);
         },
       ),
 
