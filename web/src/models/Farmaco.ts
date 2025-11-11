@@ -9,6 +9,7 @@ export interface Farmaco {
   principio_activo: string
   concentracion?: string
   forma_farmaceutica?: string
+  presentacion?: string
   unidad_medida?: string
   via_administracion?: string[]
   indicaciones?: string
@@ -34,6 +35,7 @@ export interface FarmacoFormData {
   principio_activo: string
   concentracion?: string
   forma_farmaceutica?: string
+  presentacion?: string
   unidad_medida?: string
   via_administracion?: string[]
   indicaciones?: string
@@ -51,6 +53,7 @@ export interface FarmacoUpdateData {
   principio_activo?: string
   concentracion?: string
   forma_farmaceutica?: string
+  presentacion?: string
   unidad_medida?: string
   via_administracion?: string[]
   indicaciones?: string

@@ -56,7 +56,7 @@ export default function UsuariosRegistradosPage() {
         .from('tutores')
         .select(`
           *,
-          usuario:users!tutores_user_id_fkey (
+          usuario:user_id (
             id,
             email,
             nombre_completo,

@@ -408,7 +408,6 @@ export default function TutoresPage() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
-              disabled={isEditing}
             />
             <Input
               label="Teléfono"
