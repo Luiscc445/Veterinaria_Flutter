@@ -25,7 +25,10 @@ export default function Layout() {
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/mascotas', label: 'Mascotas', icon: '🐾' },
+    { path: '/tutores', label: 'Tutores', icon: '👥' },
     { path: '/citas', label: 'Citas', icon: '📅' },
+    { path: '/historias', label: 'Historias Clínicas', icon: '📋' },
+    { path: '/profesionales', label: 'Profesionales', icon: '👨‍⚕️' },
     { path: '/inventario', label: 'Inventario', icon: '💊' },
   ]
 

@@ -2,12 +2,15 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './services/supabase'
 import { User } from '@supabase/supabase-js'
-import LoginPage from './pages/auth/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-import MascotasPage from './pages/MascotasPage'
-import CitasPage from './pages/CitasPage'
-import InventarioPage from './pages/InventarioPage'
-import Layout from './components/layout/Layout'
+import LoginPage from './views/pages/auth/LoginPage'
+import DashboardPage from './views/pages/DashboardPage'
+import MascotasPage from './views/pages/MascotasPage'
+import TutoresPage from './views/pages/TutoresPage'
+import CitasPage from './views/pages/CitasPage'
+import HistoriasClinicasPage from './views/pages/HistoriasClinicasPage'
+import ProfesionalesPage from './views/pages/ProfesionalesPage'
+import InventarioPage from './views/pages/InventarioPage'
+import Layout from './views/components/layout/Layout'
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -50,7 +53,10 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/mascotas" element={<MascotasPage />} />
+            <Route path="/tutores" element={<TutoresPage />} />
             <Route path="/citas" element={<CitasPage />} />
+            <Route path="/historias" element={<HistoriasClinicasPage />} />
+            <Route path="/profesionales" element={<ProfesionalesPage />} />
             <Route path="/inventario" element={<InventarioPage />} />
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Route>
