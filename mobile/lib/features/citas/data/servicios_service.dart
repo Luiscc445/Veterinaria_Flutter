@@ -1,16 +1,14 @@
 import '../../../core/config/supabase_config.dart';
 import '../../../shared/models/servicio_model.dart';
 
-/// Servicio para obtener catálogo de servicios
+/// Servicio para obtener catálogo de servicios (Arquitectura MVC)
+/// Usa funciones SQL seguras para evitar errores de permisos
 class ServiciosService {
-  /// Obtener todos los servicios activos
+  /// Obtener todos los servicios activos usando RPC
   Future<List<ServicioModel>> obtenerServicios() async {
     try {
-      final response = await supabase
-          .from('servicios')
-          .select()
-          .eq('activo', true)
-          .order('nombre', ascending: true);
+      // Usar función SQL segura
+      final response = await supabase.rpc('get_all_servicios');
 
       return (response as List)
           .map((json) => ServicioModel.fromJson(json))
@@ -23,13 +21,12 @@ class ServiciosService {
   /// Obtener un servicio por ID
   Future<ServicioModel> obtenerServicioPorId(String id) async {
     try {
-      final response = await supabase
-          .from('servicios')
-          .select()
-          .eq('id', id)
-          .single();
-
-      return ServicioModel.fromJson(response);
+      final servicios = await obtenerServicios();
+      final servicio = servicios.firstWhere(
+        (s) => s.id == id,
+        orElse: () => throw Exception('Servicio no encontrado'),
+      );
+      return servicio;
     } catch (e) {
       throw Exception('Error al obtener servicio: $e');
     }
@@ -38,16 +35,8 @@ class ServiciosService {
   /// Obtener servicios por tipo
   Future<List<ServicioModel>> obtenerServiciosPorTipo(String tipo) async {
     try {
-      final response = await supabase
-          .from('servicios')
-          .select()
-          .eq('activo', true)
-          .eq('tipo', tipo)
-          .order('nombre', ascending: true);
-
-      return (response as List)
-          .map((json) => ServicioModel.fromJson(json))
-          .toList();
+      final servicios = await obtenerServicios();
+      return servicios.where((s) => s.tipo == tipo).toList();
     } catch (e) {
       throw Exception('Error al obtener servicios por tipo: $e');
     }

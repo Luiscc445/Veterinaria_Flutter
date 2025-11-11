@@ -1,19 +1,14 @@
 import '../../../core/config/supabase_config.dart';
 import '../../../shared/models/profesional_model.dart';
 
-/// Servicio para obtener profesionales (veterinarios)
+/// Servicio para obtener profesionales (Arquitectura MVC)
+/// Usa funciones SQL seguras para evitar errores de permisos
 class ProfesionalesService {
-  /// Obtener todos los profesionales activos
+  /// Obtener todos los profesionales activos usando RPC
   Future<List<ProfesionalModel>> obtenerProfesionales() async {
     try {
-      final response = await supabase
-          .from('profesionales')
-          .select('''
-            *,
-            user:users(nombre_completo, email, telefono)
-          ''')
-          .eq('activo', true)
-          .order('created_at', ascending: true);
+      // Usar función SQL segura
+      final response = await supabase.rpc('get_all_profesionales');
 
       return (response as List)
           .map((json) => ProfesionalModel.fromJson(json))
@@ -26,16 +21,12 @@ class ProfesionalesService {
   /// Obtener un profesional por ID
   Future<ProfesionalModel> obtenerProfesionalPorId(String id) async {
     try {
-      final response = await supabase
-          .from('profesionales')
-          .select('''
-            *,
-            user:users(nombre_completo, email, telefono)
-          ''')
-          .eq('id', id)
-          .single();
-
-      return ProfesionalModel.fromJson(response);
+      final profesionales = await obtenerProfesionales();
+      final profesional = profesionales.firstWhere(
+        (p) => p.id == id,
+        orElse: () => throw Exception('Profesional no encontrado'),
+      );
+      return profesional;
     } catch (e) {
       throw Exception('Error al obtener profesional: $e');
     }
@@ -46,35 +37,33 @@ class ProfesionalesService {
     String especialidad,
   ) async {
     try {
-      final response = await supabase
-          .from('profesionales')
-          .select('''
-            *,
-            user:users(nombre_completo, email, telefono)
-          ''')
-          .eq('activo', true)
-          .contains('especialidades', [especialidad])
-          .order('created_at', ascending: true);
-
-      return (response as List)
-          .map((json) => ProfesionalModel.fromJson(json))
+      final profesionales = await obtenerProfesionales();
+      return profesionales
+          .where((p) => p.especialidades?.contains(especialidad) ?? false)
           .toList();
     } catch (e) {
       throw Exception('Error al obtener profesionales por especialidad: $e');
     }
   }
 
-  /// Obtener horarios de un profesional (simplificado)
-  /// En el futuro se puede extender para obtener horarios configurados
+  /// Obtener horarios de un profesional
   Future<Map<String, dynamic>> obtenerHorarios(String profesionalId) async {
     try {
-      // Por ahora retornamos horarios fijos
-      // En el futuro se puede leer de una tabla de horarios
+      final profesional = await obtenerProfesionalPorId(profesionalId);
+
+      // Si tiene horario configurado, devolverlo
+      if (profesional.horarioAtencion != null &&
+          profesional.horarioAtencion!.isNotEmpty) {
+        return profesional.horarioAtencion!;
+      }
+
+      // Horarios por defecto
       return {
-        'dias_laborales': ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
-        'hora_inicio': '09:00',
-        'hora_fin': '18:00',
-        'duracion_slot': 30, // minutos
+        'lunes': {'inicio': '09:00', 'fin': '18:00'},
+        'martes': {'inicio': '09:00', 'fin': '18:00'},
+        'miercoles': {'inicio': '09:00', 'fin': '18:00'},
+        'jueves': {'inicio': '09:00', 'fin': '18:00'},
+        'viernes': {'inicio': '09:00', 'fin': '18:00'},
       };
     } catch (e) {
       throw Exception('Error al obtener horarios: $e');
