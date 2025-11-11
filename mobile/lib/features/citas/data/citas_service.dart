@@ -6,17 +6,8 @@ class CitasService {
   /// Obtener mis citas (tutor)
   Future<Map<String, List<CitaModel>>> obtenerMisCitas({String? estado}) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('Usuario no autenticado');
-
-      // Obtener tutor_id
-      final tutorResponse = await supabase
-          .from('tutores')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-
-      final tutorId = tutorResponse['id'];
+      // Obtener tutor_id usando la función helper con caché
+      final tutorId = await getCurrentTutorId();
 
       // Construir query
       var query = supabase
@@ -95,17 +86,8 @@ class CitasService {
   /// Crear nueva cita
   Future<CitaModel> crearCita(Map<String, dynamic> data) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('Usuario no autenticado');
-
-      // Obtener tutor_id
-      final tutorResponse = await supabase
-          .from('tutores')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-
-      final tutorId = tutorResponse['id'];
+      // Obtener tutor_id usando la función helper con caché
+      final tutorId = await getCurrentTutorId();
 
       // Agregar tutor_id
       data['tutor_id'] = tutorId;

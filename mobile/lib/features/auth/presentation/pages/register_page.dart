@@ -39,47 +39,60 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Registrar en Supabase Auth
+      // Registrar en Supabase Auth con metadata del rol
       final authResponse = await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         data: {
           'nombre_completo': _nombreController.text.trim(),
+          'rol': 'tutor', // Importante: incluir el rol en el metadata
         },
       );
 
-      if (authResponse.user != null) {
-        // Crear registro en tabla users
-        await supabase.from('users').insert({
-          'auth_user_id': authResponse.user!.id,
-          'email': _emailController.text.trim(),
-          'nombre_completo': _nombreController.text.trim(),
-          'telefono': _telefonoController.text.trim(),
-          'rol': 'tutor',
-        });
+      if (authResponse.user == null) {
+        throw Exception('Error al crear usuario. Por favor intenta de nuevo.');
+      }
 
-        // Crear registro en tabla tutores
-        final userResponse = await supabase
-            .from('users')
-            .select('id')
-            .eq('auth_user_id', authResponse.user!.id)
-            .single();
+      // Esperar un momento para que el trigger de auth procese el usuario
+      await Future.delayed(const Duration(milliseconds: 500));
 
-        await supabase.from('tutores').insert({
-          'user_id': userResponse['id'],
-        });
+      // Crear registro en tabla users
+      await supabase.from('users').insert({
+        'auth_user_id': authResponse.user!.id,
+        'email': _emailController.text.trim(),
+        'nombre_completo': _nombreController.text.trim(),
+        'telefono': _telefonoController.text.trim().isNotEmpty
+            ? _telefonoController.text.trim()
+            : null,
+        'rol': 'tutor',
+      });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('¡Registro exitoso! Iniciando sesión...'),
-              backgroundColor: Colors.green,
-            ),
-          );
+      // Obtener el user_id recién creado
+      final userResponse = await supabase
+          .from('users')
+          .select('id')
+          .eq('auth_user_id', authResponse.user!.id)
+          .single();
 
-          await Future.delayed(const Duration(seconds: 1));
-          context.go(AppConstants.homeRoute);
-        }
+      final userId = userResponse['id'];
+
+      // Crear registro en tabla tutores
+      await supabase.from('tutores').insert({
+        'user_id': userId,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Registro exitoso! Iniciando sesión...'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Dar tiempo para que se actualice el JWT
+        await Future.delayed(const Duration(milliseconds: 500));
+        context.go(AppConstants.homeRoute);
       }
     } catch (e) {
       if (mounted) {
@@ -87,6 +100,7 @@ class _RegisterPageState extends State<RegisterPage> {
           SnackBar(
             content: Text('Error: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

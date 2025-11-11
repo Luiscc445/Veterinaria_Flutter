@@ -6,17 +6,8 @@ class MascotasService {
   /// Obtener todas las mascotas del tutor actual
   Future<List<MascotaModel>> obtenerMisMascotas() async {
     try {
-      // Primero obtener el tutor_id
-      final userId = currentUserId;
-      if (userId == null) throw Exception('Usuario no autenticado');
-
-      final tutorResponse = await supabase
-          .from('tutores')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-
-      final tutorId = tutorResponse['id'];
+      // Obtener tutor_id usando la función helper con caché
+      final tutorId = await getCurrentTutorId();
 
       // Obtener mascotas del tutor
       final response = await supabase
@@ -53,17 +44,8 @@ class MascotasService {
   /// Crear nueva mascota
   Future<MascotaModel> crearMascota(Map<String, dynamic> data) async {
     try {
-      // Obtener tutor_id del usuario actual
-      final userId = currentUserId;
-      if (userId == null) throw Exception('Usuario no autenticado');
-
-      final tutorResponse = await supabase
-          .from('tutores')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-
-      final tutorId = tutorResponse['id'];
+      // Obtener tutor_id usando la función helper con caché
+      final tutorId = await getCurrentTutorId();
 
       // Agregar tutor_id a los datos
       data['tutor_id'] = tutorId;
