@@ -37,8 +37,8 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
       <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose}></div>
 
       {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full`}>
+      <div className="flex min-h-full items-center justify-center p-4 relative z-50">
+        <div className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full`} onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
             <h3 className="text-xl font-semibold text-gray-900">{title}</h3>

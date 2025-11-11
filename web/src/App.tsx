@@ -8,7 +8,7 @@ import MascotasPage from './views/pages/MascotasPage'
 import TutoresPage from './views/pages/TutoresPage'
 import CitasPage from './views/pages/CitasPage'
 import HistoriasClinicasPage from './views/pages/HistoriasClinicasPage'
-import ProfesionalesPage from './views/pages/ProfesionalesPage'
+import EstadisticasPage from './views/pages/EstadisticasPage'
 import InventarioPage from './views/pages/InventarioPage'
 import UsuariosRegistradosPage from './views/pages/UsuariosRegistradosPage'
 import PersonalPage from './views/pages/PersonalPage'
@@ -60,7 +60,7 @@ function App() {
             <Route path="/tutores" element={<TutoresPage />} />
             <Route path="/citas" element={<CitasPage />} />
             <Route path="/historias" element={<HistoriasClinicasPage />} />
-            <Route path="/profesionales" element={<ProfesionalesPage />} />
+            <Route path="/estadisticas" element={<EstadisticasPage />} />
             <Route path="/inventario" element={<InventarioPage />} />
             <Route path="/usuarios-registrados" element={<UsuariosRegistradosPage />} />
             <Route path="/personal" element={<PersonalPage />} />

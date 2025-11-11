@@ -48,7 +48,7 @@ export default function Layout() {
         { path: '/tutores', label: 'Tutores', icon: '👥' },
         { path: '/citas', label: 'Citas', icon: '📅' },
         { path: '/historias', label: 'Historias Clínicas', icon: '📋' },
-        { path: '/profesionales', label: 'Profesionales', icon: '👨‍⚕️' },
+        { path: '/estadisticas', label: 'Estadísticas', icon: '📈' },
         { path: '/personal', label: 'Personal', icon: '🔐' },
         { path: '/inventario', label: 'Inventario', icon: '💊' },
         { path: '/usuarios-registrados', label: 'Usuarios Registrados', icon: '👤' },
