@@ -42,10 +42,38 @@ export default function UsuariosRegistradosPage() {
   const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
 
   useEffect(() => {
-    fetchTutores()
+    checkUserRole()
   }, [])
+
+  const checkUserRole = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('rol')
+          .eq('auth_user_id', user.id)
+          .single()
+
+        if (!error && userData && userData.rol === 'admin') {
+          setIsAdmin(true)
+          fetchTutores()
+        } else {
+          setIsAdmin(false)
+        }
+      }
+    } catch (error) {
+      console.error('Error al verificar rol:', error)
+      setIsAdmin(false)
+    } finally {
+      setCheckingAuth(false)
+    }
+  }
 
   const fetchTutores = async () => {
     try {
@@ -213,6 +241,27 @@ export default function UsuariosRegistradosPage() {
     activos: tutores.filter(t => t.usuario?.activo).length,
     inactivos: tutores.filter(t => t.usuario?.activo === false).length,
     totalMascotas: tutores.reduce((sum, t) => sum + (t.mascotas?.length || 0), 0),
+  }
+
+  if (checkingAuth) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Verificando permisos...</div>
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🚫</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Acceso Denegado</h2>
+          <p className="text-gray-600">No tienes permisos para acceder a esta página.</p>
+          <p className="text-sm text-gray-500 mt-2">Solo los administradores pueden ver los usuarios registrados.</p>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {

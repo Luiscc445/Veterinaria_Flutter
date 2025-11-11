@@ -1,26 +1,53 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { signOut, getCurrentUser } from '../../../services/supabase'
+import { signOut, getCurrentUser, supabase } from '../../../services/supabase'
 import { useState, useEffect } from 'react'
 
 export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [userName, setUserName] = useState('')
+  const [userRole, setUserRole] = useState<string>('')
   const [sessionType, setSessionType] = useState<string>('veterinario')
 
   useEffect(() => {
-    getCurrentUser().then(user => {
-      if (user?.user_metadata?.nombre_completo) {
-        setUserName(user.user_metadata.nombre_completo)
-      } else {
-        setUserName(user?.email?.split('@')[0] || 'Usuario')
-      }
-    })
-
-    // Obtener tipo de sesión del localStorage
-    const savedSessionType = localStorage.getItem('sessionType') || 'veterinario'
-    setSessionType(savedSessionType)
+    loadUserData()
   }, [])
+
+  const loadUserData = async () => {
+    try {
+      const user = await getCurrentUser()
+
+      if (user) {
+        // Obtener nombre de usuario
+        if (user.user_metadata?.nombre_completo) {
+          setUserName(user.user_metadata.nombre_completo)
+        } else {
+          setUserName(user.email?.split('@')[0] || 'Usuario')
+        }
+
+        // Obtener el rol real desde la base de datos
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('rol, nombre_completo')
+          .eq('auth_user_id', user.id)
+          .single()
+
+        if (!error && userData) {
+          setUserRole(userData.rol)
+          setUserName(userData.nombre_completo)
+
+          // Sincronizar el rol en localStorage
+          localStorage.setItem('userRole', userData.rol)
+        }
+      }
+
+      // Obtener tipo de sesión del localStorage
+      const savedSessionType = localStorage.getItem('sessionType') || 'veterinario'
+      setSessionType(savedSessionType)
+    } catch (error) {
+      console.error('Error al cargar datos del usuario:', error)
+    }
+  }
 
   const handleLogout = async () => {
     await signOut()
@@ -28,7 +55,7 @@ export default function Layout() {
     navigate('/login')
   }
 
-  // Menú según tipo de sesión
+  // Menú según tipo de sesión y rol
   const getMenuItems = () => {
     if (sessionType === 'laboratorio') {
       return [
@@ -41,18 +68,32 @@ export default function Layout() {
         { path: '/mascotas', label: 'Mascotas', icon: '🐾' },
       ]
     } else {
-      // veterinario (menú completo)
-      return [
+      // Menú base para veterinarios y recepción
+      const baseMenu = [
         { path: '/dashboard', label: 'Dashboard', icon: '📊' },
         { path: '/mascotas', label: 'Mascotas', icon: '🐾' },
         { path: '/tutores', label: 'Tutores', icon: '👥' },
         { path: '/citas', label: 'Citas', icon: '📅' },
         { path: '/historias', label: 'Historias Clínicas', icon: '📋' },
-        { path: '/estadisticas', label: 'Estadísticas', icon: '📈' },
-        { path: '/personal', label: 'Personal', icon: '🔐' },
-        { path: '/inventario', label: 'Inventario', icon: '💊' },
-        { path: '/usuarios-registrados', label: 'Usuarios Registrados', icon: '👤' },
       ]
+
+      // Opciones solo para médicos y admin
+      if (userRole === 'admin' || userRole === 'medico') {
+        baseMenu.push(
+          { path: '/estadisticas', label: 'Estadísticas', icon: '📈' },
+          { path: '/inventario', label: 'Inventario', icon: '💊' }
+        )
+      }
+
+      // Opciones solo para admin
+      if (userRole === 'admin') {
+        baseMenu.push(
+          { path: '/personal', label: 'Personal', icon: '🔐' },
+          { path: '/usuarios-registrados', label: 'Usuarios Registrados', icon: '👤' }
+        )
+      }
+
+      return baseMenu
     }
   }
 
@@ -95,7 +136,13 @@ export default function Layout() {
               </div>
               <div className="ml-3 flex-1">
                 <p className="text-sm font-medium text-gray-900">{userName}</p>
-                <p className="text-xs text-gray-500">Administrador</p>
+                <p className="text-xs text-gray-500">
+                  {userRole === 'admin' ? 'Administrador' :
+                   userRole === 'medico' ? 'Veterinario' :
+                   userRole === 'laboratorista' ? 'Laboratorista' :
+                   userRole === 'ecografista' ? 'Ecografista' :
+                   userRole === 'recepcion' ? 'Recepción' : 'Usuario'}
+                </p>
               </div>
             </div>
             <button
