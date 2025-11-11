@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { signOut, getCurrentUser } from '../../services/supabase'
+import { signOut, getCurrentUser } from '../../../services/supabase'
 import { useState, useEffect } from 'react'
 
 export default function Layout() {
