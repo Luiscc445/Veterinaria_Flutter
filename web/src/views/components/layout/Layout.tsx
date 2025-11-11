@@ -49,6 +49,7 @@ export default function Layout() {
         { path: '/citas', label: 'Citas', icon: '📅' },
         { path: '/historias', label: 'Historias Clínicas', icon: '📋' },
         { path: '/profesionales', label: 'Profesionales', icon: '👨‍⚕️' },
+        { path: '/personal', label: 'Personal', icon: '🔐' },
         { path: '/inventario', label: 'Inventario', icon: '💊' },
         { path: '/usuarios-registrados', label: 'Usuarios Registrados', icon: '👤' },
       ]

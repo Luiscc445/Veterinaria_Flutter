@@ -24,9 +24,11 @@ export default function TutoresPage() {
   const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [agregarMascota, setAgregarMascota] = useState(false)
 
-  // Formulario
+  // Formulario de tutor
   const [formData, setFormData] = useState({
     email: '',
     nombre_completo: '',
@@ -36,6 +38,22 @@ export default function TutoresPage() {
     ciudad: '',
     provincia: '',
     password: '',
+  })
+
+  // Formulario de mascota (opcional al crear tutor)
+  const [mascotaData, setMascotaData] = useState({
+    nombre: '',
+    especie: 'Canino',
+    raza: '',
+    sexo: 'Macho',
+    fecha_nacimiento: '',
+    peso_kg: '',
+    color: '',
+  })
+
+  const [passwordData, setPasswordData] = useState({
+    nueva_password: '',
+    confirmar_password: '',
   })
 
   useEffect(() => {
@@ -74,6 +92,7 @@ export default function TutoresPage() {
 
   const handleCreate = () => {
     setIsEditing(false)
+    setAgregarMascota(false)
     setFormData({
       email: '',
       nombre_completo: '',
@@ -83,6 +102,15 @@ export default function TutoresPage() {
       ciudad: '',
       provincia: '',
       password: '',
+    })
+    setMascotaData({
+      nombre: '',
+      especie: 'Canino',
+      raza: '',
+      sexo: 'Macho',
+      fecha_nacimiento: '',
+      peso_kg: '',
+      color: '',
     })
     setShowFormModal(true)
   }
