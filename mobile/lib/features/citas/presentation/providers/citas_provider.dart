@@ -70,10 +70,14 @@ final disponibilidadProvider = FutureProvider.family<
 // ============================================================================
 
 /// StateNotifier para gestionar el estado del formulario de citas
-class CitaFormNotifier extends StateNotifier<AsyncValue<CitaModel?>> {
-  final CitasService _service;
+class CitaFormNotifier extends Notifier<AsyncValue<CitaModel?>> {
+  late final CitasService _service;
 
-  CitaFormNotifier(this._service) : super(const AsyncValue.data(null));
+  @override
+  AsyncValue<CitaModel?> build() {
+    _service = ref.watch(citasServiceProvider);
+    return const AsyncValue.data(null);
+  }
 
   /// Crear nueva cita
   Future<bool> crearCita(Map<String, dynamic> data) async {
@@ -133,10 +137,8 @@ class CitaFormNotifier extends StateNotifier<AsyncValue<CitaModel?>> {
 }
 
 /// Provider del notifier de formulario de cita
-final citaFormProvider =
-    StateNotifierProvider<CitaFormNotifier, AsyncValue<CitaModel?>>((ref) {
-  final service = ref.watch(citasServiceProvider);
-  return CitaFormNotifier(service);
+final citaFormProvider = NotifierProvider<CitaFormNotifier, AsyncValue<CitaModel?>>(() {
+  return CitaFormNotifier();
 });
 
 // ============================================================================
@@ -154,3 +156,4 @@ final citasPasadasProvider = Provider<AsyncValue<List<CitaModel>>>((ref) {
   final citasAsync = ref.watch(citasListProvider);
   return citasAsync.whenData((data) => data['pasadas'] ?? []);
 });
+

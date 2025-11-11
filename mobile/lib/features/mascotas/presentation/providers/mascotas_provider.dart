@@ -20,10 +20,14 @@ final mascotaPorIdProvider = FutureProvider.family<MascotaModel, String>((ref, i
 });
 
 /// StateNotifier para gestionar el estado de creación/edición de mascotas
-class MascotaFormNotifier extends StateNotifier<AsyncValue<MascotaModel?>> {
-  final MascotasService _service;
+class MascotaFormNotifier extends Notifier<AsyncValue<MascotaModel?>> {
+  late final MascotasService _service;
 
-  MascotaFormNotifier(this._service) : super(const AsyncValue.data(null));
+  @override
+  AsyncValue<MascotaModel?> build() {
+    _service = ref.watch(mascotasServiceProvider);
+    return const AsyncValue.data(null);
+  }
 
   Future<bool> crearMascota(Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
@@ -78,8 +82,7 @@ class MascotaFormNotifier extends StateNotifier<AsyncValue<MascotaModel?>> {
 }
 
 /// Provider del notifier de formulario de mascota
-final mascotaFormProvider =
-    StateNotifierProvider<MascotaFormNotifier, AsyncValue<MascotaModel?>>((ref) {
-  final service = ref.watch(mascotasServiceProvider);
-  return MascotaFormNotifier(service);
+final mascotaFormProvider = NotifierProvider<MascotaFormNotifier, AsyncValue<MascotaModel?>>(() {
+  return MascotaFormNotifier();
 });
+

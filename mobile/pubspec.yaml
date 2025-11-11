@@ -22,8 +22,8 @@ dependencies:
   go_router: ^14.0.2
 
   # Formularios
-  flutter_form_builder: ^9.2.1
-  form_builder_validators: ^9.1.0
+  flutter_form_builder: 10.2.0
+  form_builder_validators: 11.2.0
 
   # Imágenes y archivos
   image_picker: ^1.0.7
@@ -40,7 +40,7 @@ dependencies:
   flutter_svg: ^2.0.10+1
 
   # Internacionalización y formato
-  intl: ^0.19.0
+  intl: 0.20.2
 
   # Gráficos y charts
   fl_chart: ^0.66.2

@@ -38,9 +38,7 @@ class CitasService {
         query = query.eq('estado', estado);
       }
 
-      query = query.isFilter('deleted_at', null).order('fecha_hora', ascending: false);
-
-      final response = await query;
+      final response = await query.isFilter('deleted_at', null).order('fecha_hora', ascending: false);
 
       // Convertir a modelos
       final citas = (response as List)
@@ -243,3 +241,4 @@ class CitasService {
     }
   }
 }
+
