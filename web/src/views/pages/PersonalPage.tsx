@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../services/supabase'
+import { isAdminClientAvailable, updateUserPassword } from '../../services/supabaseAdmin'
 import { Card, Button, Badge, Modal, Table, Input, Select } from '../components/ui'
 
 interface PersonalUsuario {
@@ -251,26 +252,77 @@ export default function PersonalPage() {
       return
     }
 
+    if (!selectedPersonal?.auth_user_id) {
+      alert('⚠️ Este usuario no tiene cuenta de autenticación. No se puede cambiar la contraseña.')
+      return
+    }
+
     try {
-      // Llamar a la función RPC para cambiar contraseña
-      const { data, error } = await supabase.rpc('cambiar_password_admin', {
-        p_user_email: selectedPersonal?.email,
-        p_nueva_password: passwordData.nueva_password,
-      })
+      // Intentar cambiar la contraseña usando el cliente admin
+      if (isAdminClientAvailable()) {
+        const result = await updateUserPassword(
+          selectedPersonal.auth_user_id,
+          passwordData.nueva_password
+        )
 
-      if (error) throw error
-
-      const result = data as { success: boolean; error?: string; message?: string }
-
-      if (!result.success) {
-        throw new Error(result.error || 'Error al cambiar contraseña')
+        if (result.success) {
+          alert(
+            `✅ Contraseña actualizada exitosamente!\n\n` +
+            `Usuario: ${selectedPersonal.email}\n` +
+            `Nueva contraseña: ${passwordData.nueva_password}\n\n` +
+            `El usuario ya puede iniciar sesión con la nueva contraseña.`
+          )
+          setShowPasswordModal(false)
+          return
+        } else {
+          throw new Error(result.error || 'Error desconocido al actualizar contraseña')
+        }
+      } else {
+        // Si no hay cliente admin, ofrecer método alternativo
+        throw new Error('ADMIN_CLIENT_NOT_CONFIGURED')
       }
-
-      alert(`✅ Contraseña actualizada exitosamente!\n\nUsuario: ${selectedPersonal?.email}\n\nEl usuario ya puede iniciar sesión con la nueva contraseña.`)
-      setShowPasswordModal(false)
     } catch (error: any) {
       console.error('Error al cambiar contraseña:', error)
-      alert(`❌ Error al cambiar contraseña: ${error.message}`)
+
+      // Si el cliente admin no está configurado o hay error, ofrecer alternativa
+      const mensaje = error.message === 'ADMIN_CLIENT_NOT_CONFIGURED'
+        ? `⚠️ El cambio directo de contraseñas requiere configuración adicional.\n\n` +
+          `Para habilitar esta función:\n` +
+          `1. Copia tu Service Role Key de Supabase\n` +
+          `2. Agrégala en el archivo .env como VITE_SUPABASE_SERVICE_ROLE_KEY\n\n` +
+          `ALTERNATIVA ACTUAL:\n` +
+          `¿Quieres enviar un link de recuperación por email?\n\n` +
+          `Se enviará a: ${selectedPersonal?.email}`
+        : `❌ Error: ${error.message}\n\n` +
+          `¿Quieres intentar con el método de link de recuperación?\n\n` +
+          `Se enviará un email a: ${selectedPersonal?.email}`
+
+      const usarLinkRecuperacion = confirm(mensaje)
+
+      if (usarLinkRecuperacion) {
+        try {
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+            selectedPersonal!.email,
+            {
+              redirectTo: `${window.location.origin}/reset-password`,
+            }
+          )
+
+          if (resetError) throw resetError
+
+          alert(
+            `✅ Link de recuperación enviado!\n\n` +
+            `Se ha enviado un correo a ${selectedPersonal?.email}\n\n` +
+            `El usuario debe:\n` +
+            `1. Revisar su email\n` +
+            `2. Hacer clic en el link\n` +
+            `3. Ingresar su nueva contraseña`
+          )
+          setShowPasswordModal(false)
+        } catch (resetError: any) {
+          alert(`❌ Error al enviar link de recuperación: ${resetError.message}`)
+        }
+      }
     }
   }
 
