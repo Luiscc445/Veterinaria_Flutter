@@ -37,9 +37,15 @@ BEGIN
         '{}'::jsonb,
         NOW(), NOW(), '', '', '', ''
     )
-    ON CONFLICT (email) DO UPDATE SET
-        encrypted_password = crypt('Admin123!', gen_salt('bf'))
+    ON CONFLICT DO NOTHING
     RETURNING id INTO v_admin_id;
+
+    -- Si el usuario ya existe, obtener su ID
+    IF v_admin_id IS NULL THEN
+        SELECT id INTO v_admin_id FROM auth.users WHERE email = 'admin@rambopet.com';
+        UPDATE auth.users SET encrypted_password = crypt('Admin123!', gen_salt('bf'))
+        WHERE email = 'admin@rambopet.com';
+    END IF;
 
     -- MEDICO
     INSERT INTO auth.users (
@@ -57,9 +63,14 @@ BEGIN
         '{}'::jsonb,
         NOW(), NOW(), '', '', '', ''
     )
-    ON CONFLICT (email) DO UPDATE SET
-        encrypted_password = crypt('Medico123!', gen_salt('bf'))
+    ON CONFLICT DO NOTHING
     RETURNING id INTO v_medico_id;
+
+    IF v_medico_id IS NULL THEN
+        SELECT id INTO v_medico_id FROM auth.users WHERE email = 'medico@rambopet.com';
+        UPDATE auth.users SET encrypted_password = crypt('Medico123!', gen_salt('bf'))
+        WHERE email = 'medico@rambopet.com';
+    END IF;
 
     -- RECEPCION
     INSERT INTO auth.users (
@@ -77,9 +88,14 @@ BEGIN
         '{}'::jsonb,
         NOW(), NOW(), '', '', '', ''
     )
-    ON CONFLICT (email) DO UPDATE SET
-        encrypted_password = crypt('Recepcion123!', gen_salt('bf'))
+    ON CONFLICT DO NOTHING
     RETURNING id INTO v_recepcion_id;
+
+    IF v_recepcion_id IS NULL THEN
+        SELECT id INTO v_recepcion_id FROM auth.users WHERE email = 'recepcion@rambopet.com';
+        UPDATE auth.users SET encrypted_password = crypt('Recepcion123!', gen_salt('bf'))
+        WHERE email = 'recepcion@rambopet.com';
+    END IF;
 
     -- TUTOR 1
     INSERT INTO auth.users (
@@ -97,9 +113,14 @@ BEGIN
         '{}'::jsonb,
         NOW(), NOW(), '', '', '', ''
     )
-    ON CONFLICT (email) DO UPDATE SET
-        encrypted_password = crypt('Tutor123!', gen_salt('bf'))
+    ON CONFLICT DO NOTHING
     RETURNING id INTO v_tutor1_id;
+
+    IF v_tutor1_id IS NULL THEN
+        SELECT id INTO v_tutor1_id FROM auth.users WHERE email = 'tutor@rambopet.com';
+        UPDATE auth.users SET encrypted_password = crypt('Tutor123!', gen_salt('bf'))
+        WHERE email = 'tutor@rambopet.com';
+    END IF;
 
     -- TUTOR 2
     INSERT INTO auth.users (
@@ -117,9 +138,14 @@ BEGIN
         '{}'::jsonb,
         NOW(), NOW(), '', '', '', ''
     )
-    ON CONFLICT (email) DO UPDATE SET
-        encrypted_password = crypt('Tutor123!', gen_salt('bf'))
+    ON CONFLICT DO NOTHING
     RETURNING id INTO v_tutor2_id;
+
+    IF v_tutor2_id IS NULL THEN
+        SELECT id INTO v_tutor2_id FROM auth.users WHERE email = 'tutor2@rambopet.com';
+        UPDATE auth.users SET encrypted_password = crypt('Tutor123!', gen_salt('bf'))
+        WHERE email = 'tutor2@rambopet.com';
+    END IF;
 
     RAISE NOTICE '✅ Usuarios creados en auth.users';
 
