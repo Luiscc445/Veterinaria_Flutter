@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../services/supabase'
 import { isAdminClientAvailable, updateUserPassword, createUser } from '../../services/supabaseAdmin'
-import { Card, Button, Badge, Modal, Table, Input, Select } from '../components/ui'
+import { Card, Button, Badge, Modal, Table, Input, Select, SuccessModal } from '../components/ui'
 
 interface PersonalUsuario {
   id: string
@@ -26,6 +26,8 @@ export default function PersonalPage() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [successData, setSuccessData] = useState<{ email: string; password: string; rol: string } | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'medico' | 'laboratorista' | 'ecografista'>('all')
 
@@ -267,11 +269,23 @@ export default function PersonalPage() {
         }
 
         console.log('🎉 PROCESO COMPLETO - Usuario creado exitosamente')
-        alert(`✅ Usuario creado exitosamente!\n\nEmail: ${formData.email}\nContraseña: ${formData.password}\n\nEl usuario ya puede iniciar sesión en el sistema.`)
+
+        // Guardar datos para mostrar en el modal de éxito
+        setSuccessData({
+          email: formData.email,
+          password: formData.password,
+          rol: formData.rol
+        })
       }
 
+      // Cerrar formulario
       setShowFormModal(false)
-      loadPersonal()
+
+      // Recargar la lista de personal para mostrar el nuevo usuario
+      await loadPersonal()
+
+      // Mostrar modal de éxito
+      setShowSuccessModal(true)
     } catch (error: any) {
       console.error('Error al guardar:', error)
 
@@ -736,6 +750,25 @@ export default function PersonalPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Éxito */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="¡Usuario Creado Exitosamente!"
+        message="El nuevo miembro del personal ha sido registrado correctamente en el sistema."
+        details={successData ? [
+          { label: 'Email', value: successData.email },
+          { label: 'Contraseña', value: successData.password },
+          {
+            label: 'Rol',
+            value: successData.rol === 'medico' ? 'Veterinario' :
+                   successData.rol === 'laboratorista' ? 'Laboratorista' :
+                   successData.rol === 'ecografista' ? 'Ecografista' : 'Recepción'
+          },
+          { label: 'Estado', value: 'Ya puede iniciar sesión' }
+        ] : []}
+      />
     </div>
   )
 }

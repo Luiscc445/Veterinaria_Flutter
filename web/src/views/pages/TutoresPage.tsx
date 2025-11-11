@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabase'
 import { isAdminClientAvailable, createUser } from '../../services/supabaseAdmin'
-import { Card, Table, Button, Modal, Badge, Input } from '../components/ui'
+import { Card, Table, Button, Modal, Badge, Input, SuccessModal } from '../components/ui'
 
 interface Tutor {
   id: string
@@ -26,6 +26,8 @@ export default function TutoresPage() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [successData, setSuccessData] = useState<{ email: string; password: string } | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [agregarMascota, setAgregarMascota] = useState(false)
 
@@ -256,11 +258,21 @@ export default function TutoresPage() {
 
         if (tutorError) throw tutorError
 
-        alert(`✅ Tutor creado exitosamente!\n\nEmail: ${formData.email}\nContraseña: ${formData.password}\n\nEl tutor ya puede iniciar sesión desde la app móvil.`)
+        // Guardar datos para mostrar en el modal de éxito
+        setSuccessData({
+          email: formData.email,
+          password: formData.password
+        })
       }
 
+      // Cerrar formulario
       setShowFormModal(false)
-      loadTutores()
+
+      // Recargar la lista de tutores para mostrar el nuevo tutor
+      await loadTutores()
+
+      // Mostrar modal de éxito
+      setShowSuccessModal(true)
     } catch (error) {
       console.error('Error al guardar:', error)
       alert('Error al guardar el tutor')
@@ -523,6 +535,21 @@ export default function TutoresPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Éxito */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="¡Tutor Creado Exitosamente!"
+        message="El nuevo tutor ha sido registrado correctamente en el sistema."
+        details={successData ? [
+          { label: 'Email', value: successData.email },
+          { label: 'Contraseña', value: successData.password },
+          { label: 'Tipo de Usuario', value: 'Tutor' },
+          { label: 'Acceso', value: 'Aplicación Móvil' },
+          { label: 'Estado', value: 'Ya puede iniciar sesión' }
+        ] : []}
+      />
     </div>
   )
 }
