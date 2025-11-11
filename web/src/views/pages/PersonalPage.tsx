@@ -54,7 +54,7 @@ export default function PersonalPage() {
         .from('users')
         .select(`
           *,
-          profesional:profesionales!profesionales_user_id_fkey (
+          profesional:profesionales (
             id,
             matricula_profesional,
             especialidades
