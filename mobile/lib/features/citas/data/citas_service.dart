@@ -32,13 +32,13 @@ class CitasService {
             ),
             consultorio:consultorios(id, nombre, numero)
           ''')
-          .eq('tutor_id', tutorId)
-          .isFilter('deleted_at', null)
-          .order('fecha_hora', ascending: false);
+          .eq('tutor_id', tutorId);
 
       if (estado != null) {
         query = query.eq('estado', estado);
       }
+
+      query = query.isFilter('deleted_at', null).order('fecha_hora', ascending: false);
 
       final response = await query;
 
