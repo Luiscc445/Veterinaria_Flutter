@@ -2,10 +2,7 @@ import { useState, FormEvent } from 'react'
 import { supabase } from '../../../services/supabase'
 import { useNavigate } from 'react-router-dom'
 
-type SessionType = 'veterinario' | 'laboratorio' | 'ecografia'
-
 export default function LoginPage() {
-  const [sessionType, setSessionType] = useState<SessionType>('veterinario')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -18,23 +15,72 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // 1. Autenticar usuario
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
+      if (authError) throw authError
+      if (!authData.user) throw new Error('No se pudo iniciar sesión')
 
-      // Guardar el tipo de sesión en localStorage
-      localStorage.setItem('sessionType', sessionType)
+      // 2. Obtener el rol del usuario desde la base de datos
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('rol, nombre_completo, activo')
+        .eq('auth_user_id', authData.user.id)
+        .single()
 
-      // Redirigir según el tipo de sesión
-      if (sessionType === 'veterinario') {
-        navigate('/dashboard')
-      } else if (sessionType === 'laboratorio') {
-        navigate('/laboratorio')
-      } else if (sessionType === 'ecografia') {
-        navigate('/ecografia')
+      if (userError) throw new Error('No se encontró información del usuario')
+      if (!userData) throw new Error('Usuario no encontrado en el sistema')
+
+      // 3. Verificar que el usuario esté activo
+      if (!userData.activo) {
+        await supabase.auth.signOut()
+        throw new Error('Tu cuenta está desactivada. Contacta al administrador.')
+      }
+
+      // 4. Redirigir según el rol REAL del usuario
+      const rol = userData.rol
+
+      switch (rol) {
+        case 'admin':
+        case 'medico':
+          // Admin y médicos van al dashboard completo (menú veterinario)
+          localStorage.setItem('sessionType', 'veterinario')
+          localStorage.setItem('userRole', rol)
+          navigate('/dashboard')
+          break
+
+        case 'laboratorista':
+          // Laboratoristas van a vista de laboratorio
+          localStorage.setItem('sessionType', 'laboratorio')
+          localStorage.setItem('userRole', rol)
+          navigate('/laboratorio')
+          break
+
+        case 'ecografista':
+          // Ecografistas van a vista de ecografía
+          localStorage.setItem('sessionType', 'ecografia')
+          localStorage.setItem('userRole', rol)
+          navigate('/ecografia')
+          break
+
+        case 'recepcion':
+          // Recepción va al dashboard
+          localStorage.setItem('sessionType', 'veterinario')
+          localStorage.setItem('userRole', rol)
+          navigate('/dashboard')
+          break
+
+        case 'tutor':
+          // Los tutores NO deberían acceder al dashboard web
+          await supabase.auth.signOut()
+          throw new Error('Los tutores deben usar la aplicación móvil. Este es el panel administrativo.')
+
+        default:
+          await supabase.auth.signOut()
+          throw new Error(`Rol no reconocido: ${rol}`)
       }
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión')
@@ -42,12 +88,6 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-
-  const sessionOptions = [
-    { type: 'veterinario' as SessionType, label: 'Veterinario', icon: '👨‍⚕️', description: 'Consultas y atención médica' },
-    { type: 'laboratorio' as SessionType, label: 'Laboratorio', icon: '🔬', description: 'Análisis y pruebas' },
-    { type: 'ecografia' as SessionType, label: 'Ecografía', icon: '📡', description: 'Estudios de imagen' },
-  ]
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 px-4">
@@ -61,31 +101,6 @@ export default function LoginPage() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900">RamboPet</h1>
             <p className="text-gray-600 mt-2">Sistema de Gestión Veterinaria</p>
-          </div>
-
-          {/* Selector de Tipo de Sesión */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
-              Selecciona el tipo de sesión
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {sessionOptions.map((option) => (
-                <button
-                  key={option.type}
-                  type="button"
-                  onClick={() => setSessionType(option.type)}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    sessionType === option.type
-                      ? 'border-primary-500 bg-primary-50 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-primary-300'
-                  }`}
-                >
-                  <div className="text-3xl mb-1">{option.icon}</div>
-                  <div className="text-xs font-medium text-gray-900">{option.label}</div>
-                  <div className="text-[10px] text-gray-600 mt-1">{option.description}</div>
-                </button>
-              ))}
-            </div>
           </div>
 
           {error && (
@@ -105,7 +120,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="input-field"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 placeholder="tu@email.com"
               />
             </div>
@@ -120,7 +135,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="input-field"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 placeholder="••••••••"
               />
             </div>
@@ -128,15 +143,16 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary-600 text-white py-3 rounded-lg text-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-600">
-            Sistema administrativo - Solo personal autorizado
-          </p>
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">Panel Administrativo</p>
+            <p className="text-xs text-gray-500 mt-1">Solo personal autorizado</p>
+          </div>
         </div>
       </div>
     </div>
