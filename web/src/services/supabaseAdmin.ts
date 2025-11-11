@@ -80,4 +80,56 @@ export const updateUserPassword = async (
   }
 }
 
+/**
+ * Crea un nuevo usuario usando el cliente admin (solo admin)
+ * @param email - Email del usuario
+ * @param password - Contraseña
+ * @param metadata - Metadata adicional del usuario
+ */
+export const createUser = async (
+  email: string,
+  password: string,
+  metadata?: { nombre_completo?: string }
+): Promise<{ success: boolean; userId?: string; error?: string }> => {
+  try {
+    if (!supabaseAdmin) {
+      return {
+        success: false,
+        error: 'Cliente Admin no está configurado. Configura VITE_SUPABASE_SERVICE_ROLE_KEY en .env'
+      }
+    }
+
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true, // Auto-confirmar el email
+      user_metadata: metadata || {}
+    })
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+
+    if (!data.user) {
+      return {
+        success: false,
+        error: 'No se pudo crear el usuario'
+      }
+    }
+
+    return {
+      success: true,
+      userId: data.user.id
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Error desconocido'
+    }
+  }
+}
+
 export { supabaseAdmin }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabase'
+import { isAdminClientAvailable, createUser } from '../../services/supabaseAdmin'
 import { Card, Table, Button, Modal, Badge, Input } from '../components/ui'
 
 interface Tutor {
@@ -199,26 +200,38 @@ export default function TutoresPage() {
           return
         }
 
-        // 1. Crear usuario en Supabase Authentication
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              nombre_completo: formData.nombre_completo,
-            },
-            emailRedirectTo: undefined,
-          },
-        })
+        // Verificar que el cliente admin esté disponible
+        if (!isAdminClientAvailable()) {
+          alert(
+            '⚠️ No se puede crear tutores.\n\n' +
+            'El sistema requiere configuración adicional:\n' +
+            '1. Agrega VITE_SUPABASE_SERVICE_ROLE_KEY en el archivo .env\n' +
+            '2. Reinicia el servidor\n\n' +
+            'Consulta la documentación en database/CONFIGURAR_CAMBIO_PASSWORDS.md'
+          )
+          return
+        }
 
-        if (authError) throw authError
-        if (!authData.user) throw new Error('No se pudo crear el usuario en Authentication')
+        // 1. Crear usuario en Supabase Authentication usando cliente admin
+        const createUserResult = await createUser(
+          formData.email,
+          formData.password,
+          { nombre_completo: formData.nombre_completo }
+        )
+
+        if (!createUserResult.success) {
+          throw new Error(createUserResult.error || 'Error al crear usuario en Authentication')
+        }
+
+        if (!createUserResult.userId) {
+          throw new Error('No se obtuvo el ID del usuario creado')
+        }
 
         // 2. Crear en tabla users
         const { data: userData, error: userError } = await supabase
           .from('users')
           .insert({
-            auth_user_id: authData.user.id,
+            auth_user_id: createUserResult.userId,
             email: formData.email,
             nombre_completo: formData.nombre_completo,
             telefono: formData.telefono,
