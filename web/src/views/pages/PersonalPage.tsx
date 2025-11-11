@@ -177,16 +177,23 @@ export default function PersonalPage() {
         }
 
         // Verificar que el cliente admin esté disponible
+        console.log('🔍 Verificando cliente admin disponible:', isAdminClientAvailable())
+
         if (!isAdminClientAvailable()) {
-          alert(
+          const mensaje =
             '⚠️ No se puede crear usuarios.\n\n' +
             'El sistema requiere configuración adicional:\n' +
-            '1. Agrega VITE_SUPABASE_SERVICE_ROLE_KEY en el archivo .env\n' +
-            '2. Reinicia el servidor\n\n' +
-            'Consulta la documentación en database/CONFIGURAR_CAMBIO_PASSWORDS.md'
-          )
+            '1. Verifica que VITE_SUPABASE_SERVICE_ROLE_KEY esté en .env\n' +
+            '2. Reinicia el servidor (npm run dev)\n' +
+            '3. Verifica que la clave sea correcta\n\n' +
+            'Estado actual: Cliente admin NO disponible'
+
+          console.error(mensaje)
+          alert(mensaje)
           return
         }
+
+        console.log('✅ Cliente admin disponible. Creando usuario...')
 
         // 1. Crear usuario en Supabase Authentication usando cliente admin
         const createUserResult = await createUser(
@@ -195,15 +202,23 @@ export default function PersonalPage() {
           { nombre_completo: formData.nombre_completo }
         )
 
+        console.log('📊 Resultado de createUser:', createUserResult)
+
         if (!createUserResult.success) {
-          throw new Error(createUserResult.error || 'Error al crear usuario en Authentication')
+          const error = createUserResult.error || 'Error al crear usuario en Authentication'
+          console.error('❌ Error en createUser:', error)
+          throw new Error(error)
         }
 
         if (!createUserResult.userId) {
+          console.error('❌ No se obtuvo userId')
           throw new Error('No se obtuvo el ID del usuario creado')
         }
 
+        console.log('✅ Usuario creado en auth.users con ID:', createUserResult.userId)
+
         // 2. Crear en tabla users con el auth_user_id
+        console.log('📝 Insertando en tabla users...')
         const { data: userData, error: userError } = await supabase
           .from('users')
           .insert({
@@ -217,7 +232,12 @@ export default function PersonalPage() {
           .select()
           .single()
 
-        if (userError) throw userError
+        if (userError) {
+          console.error('❌ Error al insertar en users:', userError)
+          throw userError
+        }
+
+        console.log('✅ Usuario insertado en tabla users:', userData)
 
         // 3. Si es médico, crear en profesionales
         if (formData.rol === 'medico' && formData.matricula_profesional) {
@@ -226,22 +246,51 @@ export default function PersonalPage() {
             .map(e => e.trim())
             .filter(e => e)
 
-          await supabase.from('profesionales').insert({
+          console.log('📝 Insertando en tabla profesionales...')
+          console.log('   - user_id:', userData.id)
+          console.log('   - matricula:', formData.matricula_profesional)
+          console.log('   - especialidades:', especialidadesArray)
+
+          const { error: profError } = await supabase.from('profesionales').insert({
             user_id: userData.id,
             matricula_profesional: formData.matricula_profesional,
             especialidades: especialidadesArray,
             activo: true,
           })
+
+          if (profError) {
+            console.error('❌ Error al insertar en profesionales:', profError)
+            throw profError
+          }
+
+          console.log('✅ Profesional insertado correctamente')
         }
 
+        console.log('🎉 PROCESO COMPLETO - Usuario creado exitosamente')
         alert(`✅ Usuario creado exitosamente!\n\nEmail: ${formData.email}\nContraseña: ${formData.password}\n\nEl usuario ya puede iniciar sesión en el sistema.`)
       }
 
       setShowFormModal(false)
       loadPersonal()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al guardar:', error)
-      alert('Error al guardar el personal')
+
+      // Mostrar error detallado
+      let errorMessage = 'Error al guardar el personal'
+
+      if (error.message) {
+        errorMessage += `:\n${error.message}`
+      }
+
+      if (error.details) {
+        errorMessage += `\n\nDetalles: ${error.details}`
+      }
+
+      if (error.hint) {
+        errorMessage += `\n\nSugerencia: ${error.hint}`
+      }
+
+      alert(errorMessage)
     }
   }
 
