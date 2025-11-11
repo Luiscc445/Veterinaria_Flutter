@@ -1,6 +1,23 @@
 # 📋 GUÍA: Crear Usuarios de Prueba en RamboPet
 
-Esta guía te ayudará a crear usuarios de prueba para probar todas las funcionalidades del sistema.
+Esta guía te ayudará a crear usuarios de prueba con contraseñas hasheadas para probar todas las funcionalidades del sistema.
+
+## ⚡ MÉTODO RÁPIDO (Recomendado)
+
+**Ejecuta un solo script SQL** que crea todo automáticamente:
+
+1. Ve a **Supabase Dashboard** → **SQL Editor**
+2. Crea un nuevo query
+3. Copia y pega el contenido completo de: **`crear_usuarios_completo.sql`**
+4. Haz clic en **RUN** (F5)
+5. ¡Listo! Todos los usuarios ya tienen contraseñas hasheadas
+
+Este script crea automáticamente:
+- ✅ 5 usuarios con contraseñas hasheadas en `auth.users`
+- ✅ Datos en tabla `users` vinculados con `auth.users`
+- ✅ 5 mascotas, 8 servicios, 4 consultorios, 7 medicamentos, 2 citas
+
+---
 
 ## 🎯 Usuarios que Vamos a Crear
 
@@ -297,10 +314,38 @@ Password: Tutor123!
 - Los usuarios ya existen. Puedes eliminarlos y volver a crearlos
 - O simplemente actualizar con `ON CONFLICT DO UPDATE`
 
+### Error: "permission denied for schema auth"
+- El script `crear_usuarios_completo.sql` requiere privilegios de admin
+- Usa el MÉTODO 1 (manual) si no tienes acceso a `auth.users`
+- O ejecuta el script desde la consola de Supabase con permisos elevados
+
 ### No aparecen las mascotas/datos
 - Verifica que el script SQL se ejecutó sin errores
 - Ejecuta las consultas de verificación
 - Revisa que las políticas RLS estén aplicadas
+
+---
+
+## 🔐 Sobre las Contraseñas Hasheadas
+
+El script `crear_usuarios_completo.sql` usa la función `crypt()` de PostgreSQL para hashear las contraseñas con **bcrypt**:
+
+```sql
+encrypted_pw := crypt(user_password, gen_salt('bf'));
+```
+
+Las contraseñas se almacenan de forma segura en `auth.users.encrypted_password` usando:
+- **Algoritmo**: bcrypt (Blowfish)
+- **Salt**: Generado aleatoriamente por PostgreSQL
+- **Costo**: Factor de trabajo predeterminado de bcrypt
+
+**Contraseñas en texto plano** (solo para desarrollo):
+- Admin: `Admin123!`
+- Médico: `Medico123!`
+- Recepción: `Recepcion123!`
+- Tutores: `Tutor123!`
+
+**⚠️ IMPORTANTE**: En producción, cambia todas las contraseñas por unas más seguras.
 
 ---
 
@@ -310,5 +355,6 @@ Si tienes problemas:
 1. Revisa los logs en Supabase (Database > Logs)
 2. Verifica las políticas RLS (Authentication > Policies)
 3. Asegúrate de haber ejecutado los scripts de funciones RPC
+4. Usa `crear_usuarios_completo.sql` para crear usuarios automáticamente
 
-¡Listo! Ahora puedes probar todo el sistema con usuarios reales. 🎉
+¡Listo! Ahora puedes probar todo el sistema con usuarios reales y contraseñas seguras. 🎉
