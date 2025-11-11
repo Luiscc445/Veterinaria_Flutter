@@ -188,10 +188,37 @@ export default function TutoresPage() {
 
         if (updateTutorError) throw updateTutorError
       } else {
-        // Crear usuario
+        // Crear nuevo tutor
+        if (!formData.password) {
+          alert('Debes ingresar una contraseña para el nuevo tutor')
+          return
+        }
+
+        if (formData.password.length < 6) {
+          alert('La contraseña debe tener al menos 6 caracteres')
+          return
+        }
+
+        // 1. Crear usuario en Supabase Authentication
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              nombre_completo: formData.nombre_completo,
+            },
+            emailRedirectTo: undefined,
+          },
+        })
+
+        if (authError) throw authError
+        if (!authData.user) throw new Error('No se pudo crear el usuario en Authentication')
+
+        // 2. Crear en tabla users
         const { data: userData, error: userError } = await supabase
           .from('users')
           .insert({
+            auth_user_id: authData.user.id,
             email: formData.email,
             nombre_completo: formData.nombre_completo,
             telefono: formData.telefono,
@@ -203,7 +230,7 @@ export default function TutoresPage() {
 
         if (userError) throw userError
 
-        // Crear tutor
+        // 3. Crear tutor
         const { error: tutorError } = await supabase
           .from('tutores')
           .insert({
@@ -215,6 +242,8 @@ export default function TutoresPage() {
           })
 
         if (tutorError) throw tutorError
+
+        alert(`✅ Tutor creado exitosamente!\n\nEmail: ${formData.email}\nContraseña: ${formData.password}\n\nEl tutor ya puede iniciar sesión desde la app móvil.`)
       }
 
       setShowFormModal(false)

@@ -170,10 +170,31 @@ export default function PersonalPage() {
           return
         }
 
-        // Crear en users
+        if (formData.password.length < 6) {
+          alert('La contraseña debe tener al menos 6 caracteres')
+          return
+        }
+
+        // 1. Crear usuario en Supabase Authentication
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              nombre_completo: formData.nombre_completo,
+            },
+            emailRedirectTo: undefined, // No enviar email de confirmación
+          },
+        })
+
+        if (authError) throw authError
+        if (!authData.user) throw new Error('No se pudo crear el usuario en Authentication')
+
+        // 2. Crear en tabla users con el auth_user_id
         const { data: userData, error: userError } = await supabase
           .from('users')
           .insert({
+            auth_user_id: authData.user.id,
             email: formData.email,
             nombre_completo: formData.nombre_completo,
             telefono: formData.telefono,
@@ -185,7 +206,7 @@ export default function PersonalPage() {
 
         if (userError) throw userError
 
-        // Si es médico, crear en profesionales
+        // 3. Si es médico, crear en profesionales
         if (formData.rol === 'medico' && formData.matricula_profesional) {
           const especialidadesArray = formData.especialidades
             .split(',')
@@ -200,7 +221,7 @@ export default function PersonalPage() {
           })
         }
 
-        alert(`Usuario creado. IMPORTANTE: Debes crear manualmente el usuario en Supabase Authentication con email ${formData.email} y contraseña: ${formData.password}`)
+        alert(`✅ Usuario creado exitosamente!\n\nEmail: ${formData.email}\nContraseña: ${formData.password}\n\nEl usuario ya puede iniciar sesión en el sistema.`)
       }
 
       setShowFormModal(false)
@@ -230,8 +251,27 @@ export default function PersonalPage() {
       return
     }
 
-    alert(`IMPORTANTE: Debes cambiar la contraseña manualmente en Supabase Dashboard > Authentication > Users > ${selectedPersonal?.email}\n\nNueva contraseña: ${passwordData.nueva_password}`)
-    setShowPasswordModal(false)
+    try {
+      // Llamar a la función RPC para cambiar contraseña
+      const { data, error } = await supabase.rpc('cambiar_password_admin', {
+        p_user_email: selectedPersonal?.email,
+        p_nueva_password: passwordData.nueva_password,
+      })
+
+      if (error) throw error
+
+      const result = data as { success: boolean; error?: string; message?: string }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al cambiar contraseña')
+      }
+
+      alert(`✅ Contraseña actualizada exitosamente!\n\nUsuario: ${selectedPersonal?.email}\n\nEl usuario ya puede iniciar sesión con la nueva contraseña.`)
+      setShowPasswordModal(false)
+    } catch (error: any) {
+      console.error('Error al cambiar contraseña:', error)
+      alert(`❌ Error al cambiar contraseña: ${error.message}`)
+    }
   }
 
   const handleToggleStatus = async (person: PersonalUsuario) => {
