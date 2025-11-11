@@ -33,7 +33,7 @@ class CitasService {
             consultorio:consultorios(id, nombre, numero)
           ''')
           .eq('tutor_id', tutorId)
-          .is_('deleted_at', null)
+          .isFilter('deleted_at', null)
           .order('fecha_hora', ascending: false);
 
       if (estado != null) {
@@ -85,7 +85,7 @@ class CitasService {
             consultorio:consultorios(*)
           ''')
           .eq('id', id)
-          .is_('deleted_at', null)
+          .isFilter('deleted_at', null)
           .single();
 
       return CitaModel.fromJson(response);
@@ -190,7 +190,7 @@ class CitasService {
           .not('estado', 'in', '(cancelada,reprogramada)')
           .gte('fecha_hora', fechaInicio)
           .lte('fecha_hora', fechaFin)
-          .is_('deleted_at', null);
+          .isFilter('deleted_at', null);
 
       // Generar horarios disponibles (9:00 a 18:00 cada 30 min)
       final horarios = <Map<String, dynamic>>[];
@@ -200,7 +200,7 @@ class CitasService {
       for (int hora = horaInicio; hora < horaFin; hora++) {
         for (int minuto = 0; minuto < 60; minuto += 30) {
           final horaStr =
-              '${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}';
+              '${hora.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')}';
           final fechaHora = '${fecha}T$horaStr:00';
 
           // Verificar si está ocupado

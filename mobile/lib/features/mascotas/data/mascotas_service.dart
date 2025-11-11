@@ -23,7 +23,7 @@ class MascotasService {
           .from('mascotas')
           .select()
           .eq('tutor_id', tutorId)
-          .is_('deleted_at', null)
+          .isFilter('deleted_at', null)
           .order('created_at', ascending: false);
 
       return (response as List)
@@ -41,7 +41,7 @@ class MascotasService {
           .from('mascotas')
           .select()
           .eq('id', id)
-          .is_('deleted_at', null)
+          .isFilter('deleted_at', null)
           .single();
 
       return MascotaModel.fromJson(response);

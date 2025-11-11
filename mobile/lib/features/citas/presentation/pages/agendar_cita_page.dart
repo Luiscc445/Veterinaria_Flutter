@@ -283,7 +283,7 @@ class _AgendarCitaPageState extends ConsumerState<AgendarCitaPage> {
     }
 
     final fechaStr =
-        '${_fechaSeleccionada!.year}-${_fechaSeleccionada!.month.toString().padStart(2, '0')}-${_fechaSeleccionada!.day.toString().padStart(2, '0')}';
+        '${_fechaSeleccionada!.year}-${_fechaSeleccionada!.month.toString().padLeft(2, '0')}-${_fechaSeleccionada!.day.toString().padLeft(2, '0')}';
 
     final disponibilidadAsync = ref.watch(
       disponibilidadProvider({
