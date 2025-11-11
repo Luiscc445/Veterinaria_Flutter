@@ -6,6 +6,7 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [userName, setUserName] = useState('')
+  const [sessionType, setSessionType] = useState<string>('veterinario')
 
   useEffect(() => {
     getCurrentUser().then(user => {
@@ -15,22 +16,46 @@ export default function Layout() {
         setUserName(user?.email?.split('@')[0] || 'Usuario')
       }
     })
+
+    // Obtener tipo de sesión del localStorage
+    const savedSessionType = localStorage.getItem('sessionType') || 'veterinario'
+    setSessionType(savedSessionType)
   }, [])
 
   const handleLogout = async () => {
     await signOut()
+    localStorage.removeItem('sessionType')
     navigate('/login')
   }
 
-  const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/mascotas', label: 'Mascotas', icon: '🐾' },
-    { path: '/tutores', label: 'Tutores', icon: '👥' },
-    { path: '/citas', label: 'Citas', icon: '📅' },
-    { path: '/historias', label: 'Historias Clínicas', icon: '📋' },
-    { path: '/profesionales', label: 'Profesionales', icon: '👨‍⚕️' },
-    { path: '/inventario', label: 'Inventario', icon: '💊' },
-  ]
+  // Menú según tipo de sesión
+  const getMenuItems = () => {
+    if (sessionType === 'laboratorio') {
+      return [
+        { path: '/laboratorio', label: 'Laboratorio', icon: '🔬' },
+        { path: '/inventario', label: 'Inventario', icon: '💊' },
+      ]
+    } else if (sessionType === 'ecografia') {
+      return [
+        { path: '/ecografia', label: 'Ecografía', icon: '📡' },
+        { path: '/mascotas', label: 'Mascotas', icon: '🐾' },
+      ]
+    } else {
+      // veterinario (menú completo)
+      return [
+        { path: '/dashboard', label: 'Dashboard', icon: '📊' },
+        { path: '/mascotas', label: 'Mascotas', icon: '🐾' },
+        { path: '/tutores', label: 'Tutores', icon: '👥' },
+        { path: '/citas', label: 'Citas', icon: '📅' },
+        { path: '/historias', label: 'Historias Clínicas', icon: '📋' },
+        { path: '/profesionales', label: 'Profesionales', icon: '👨‍⚕️' },
+        { path: '/inventario', label: 'Inventario', icon: '💊' },
+        { path: '/usuarios-registrados', label: 'Usuarios Registrados', icon: '👤' },
+      ]
+    }
+  }
+
+  const menuItems = getMenuItems()
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -2,7 +2,10 @@ import { useState, FormEvent } from 'react'
 import { supabase } from '../../../services/supabase'
 import { useNavigate } from 'react-router-dom'
 
+type SessionType = 'veterinario' | 'laboratorio' | 'ecografia'
+
 export default function LoginPage() {
+  const [sessionType, setSessionType] = useState<SessionType>('veterinario')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,13 +25,29 @@ export default function LoginPage() {
 
       if (error) throw error
 
-      navigate('/dashboard')
+      // Guardar el tipo de sesión en localStorage
+      localStorage.setItem('sessionType', sessionType)
+
+      // Redirigir según el tipo de sesión
+      if (sessionType === 'veterinario') {
+        navigate('/dashboard')
+      } else if (sessionType === 'laboratorio') {
+        navigate('/laboratorio')
+      } else if (sessionType === 'ecografia') {
+        navigate('/ecografia')
+      }
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión')
     } finally {
       setLoading(false)
     }
   }
+
+  const sessionOptions = [
+    { type: 'veterinario' as SessionType, label: 'Veterinario', icon: '👨‍⚕️', description: 'Consultas y atención médica' },
+    { type: 'laboratorio' as SessionType, label: 'Laboratorio', icon: '🔬', description: 'Análisis y pruebas' },
+    { type: 'ecografia' as SessionType, label: 'Ecografía', icon: '📡', description: 'Estudios de imagen' },
+  ]
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 px-4">
@@ -42,6 +61,31 @@ export default function LoginPage() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900">RamboPet</h1>
             <p className="text-gray-600 mt-2">Sistema de Gestión Veterinaria</p>
+          </div>
+
+          {/* Selector de Tipo de Sesión */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
+              Selecciona el tipo de sesión
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {sessionOptions.map((option) => (
+                <button
+                  key={option.type}
+                  type="button"
+                  onClick={() => setSessionType(option.type)}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    sessionType === option.type
+                      ? 'border-primary-500 bg-primary-50 shadow-md'
+                      : 'border-gray-200 bg-white hover:border-primary-300'
+                  }`}
+                >
+                  <div className="text-3xl mb-1">{option.icon}</div>
+                  <div className="text-xs font-medium text-gray-900">{option.label}</div>
+                  <div className="text-[10px] text-gray-600 mt-1">{option.description}</div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && (

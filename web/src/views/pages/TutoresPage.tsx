@@ -1,13 +1,42 @@
 import { useEffect, useState } from 'react'
-import { TutoresController } from '../../controllers'
-import type { Tutor } from '../../models'
-import { Card, Table, Button, Modal, Badge } from '../components/ui'
+import { supabase } from '../../services/supabase'
+import { Card, Table, Button, Modal, Badge, Input } from '../components/ui'
+
+interface Tutor {
+  id: string
+  user_id: string
+  dni: string
+  direccion: string
+  ciudad: string
+  provincia: string
+  created_at: string
+  usuario?: {
+    email: string
+    nombre_completo: string
+    telefono: string
+    activo: boolean
+  }
+}
 
 export default function TutoresPage() {
   const [tutores, setTutores] = useState<Tutor[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showFormModal, setShowFormModal] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+
+  // Formulario
+  const [formData, setFormData] = useState({
+    email: '',
+    nombre_completo: '',
+    telefono: '',
+    dni: '',
+    direccion: '',
+    ciudad: '',
+    provincia: '',
+    password: '',
+  })
 
   useEffect(() => {
     loadTutores()
@@ -15,8 +44,22 @@ export default function TutoresPage() {
 
   const loadTutores = async () => {
     try {
-      const data = await TutoresController.getAll()
-      setTutores(data)
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('tutores')
+        .select(`
+          *,
+          usuario:users!tutores_user_id_fkey (
+            email,
+            nombre_completo,
+            telefono,
+            activo
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setTutores(data || [])
     } catch (error) {
       console.error('Error loading tutores:', error)
     } finally {
@@ -29,21 +72,165 @@ export default function TutoresPage() {
     setShowDetailModal(true)
   }
 
+  const handleCreate = () => {
+    setIsEditing(false)
+    setFormData({
+      email: '',
+      nombre_completo: '',
+      telefono: '',
+      dni: '',
+      direccion: '',
+      ciudad: '',
+      provincia: '',
+      password: '',
+    })
+    setShowFormModal(true)
+  }
+
+  const handleEdit = (tutor: Tutor) => {
+    setIsEditing(true)
+    setSelectedTutor(tutor)
+    setFormData({
+      email: tutor.usuario?.email || '',
+      nombre_completo: tutor.usuario?.nombre_completo || '',
+      telefono: tutor.usuario?.telefono || '',
+      dni: tutor.dni,
+      direccion: tutor.direccion,
+      ciudad: tutor.ciudad,
+      provincia: tutor.provincia,
+      password: '',
+    })
+    setShowFormModal(true)
+  }
+
+  const handleDelete = async (tutor: Tutor) => {
+    if (!confirm(`¿Estás seguro de eliminar al tutor ${tutor.usuario?.nombre_completo}?`)) return
+
+    try {
+      // Eliminar tutor (esto también eliminará el usuario por la política de CASCADE)
+      const { error: deleteTutorError } = await supabase
+        .from('tutores')
+        .delete()
+        .eq('id', tutor.id)
+
+      if (deleteTutorError) throw deleteTutorError
+
+      // Eliminar usuario
+      const { error: deleteUserError } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', tutor.user_id)
+
+      if (deleteUserError) throw deleteUserError
+
+      loadTutores()
+    } catch (error) {
+      console.error('Error al eliminar:', error)
+      alert('Error al eliminar el tutor')
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      if (isEditing && selectedTutor) {
+        // Actualizar usuario
+        const { error: updateUserError } = await supabase
+          .from('users')
+          .update({
+            email: formData.email,
+            nombre_completo: formData.nombre_completo,
+            telefono: formData.telefono,
+          })
+          .eq('id', selectedTutor.user_id)
+
+        if (updateUserError) throw updateUserError
+
+        // Actualizar tutor
+        const { error: updateTutorError } = await supabase
+          .from('tutores')
+          .update({
+            dni: formData.dni,
+            direccion: formData.direccion,
+            ciudad: formData.ciudad,
+            provincia: formData.provincia,
+          })
+          .eq('id', selectedTutor.id)
+
+        if (updateTutorError) throw updateTutorError
+      } else {
+        // Crear usuario
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .insert({
+            email: formData.email,
+            nombre_completo: formData.nombre_completo,
+            telefono: formData.telefono,
+            rol: 'tutor',
+            activo: true,
+          })
+          .select()
+          .single()
+
+        if (userError) throw userError
+
+        // Crear tutor
+        const { error: tutorError } = await supabase
+          .from('tutores')
+          .insert({
+            user_id: userData.id,
+            dni: formData.dni,
+            direccion: formData.direccion,
+            ciudad: formData.ciudad,
+            provincia: formData.provincia,
+          })
+
+        if (tutorError) throw tutorError
+      }
+
+      setShowFormModal(false)
+      loadTutores()
+    } catch (error) {
+      console.error('Error al guardar:', error)
+      alert('Error al guardar el tutor')
+    }
+  }
+
+  const handleToggleStatus = async (tutor: Tutor) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ activo: !tutor.usuario?.activo })
+        .eq('id', tutor.user_id)
+
+      if (error) throw error
+      loadTutores()
+    } catch (error) {
+      console.error('Error al cambiar estado:', error)
+    }
+  }
+
   const columns = [
     {
       key: 'nombre',
       label: 'Tutor',
       render: (tutor: Tutor) => (
         <div>
-          <p className="font-medium text-gray-900">{tutor.nombre || '-'}</p>
-          <p className="text-sm text-gray-500">{tutor.email || '-'}</p>
+          <p className="font-medium text-gray-900">{tutor.usuario?.nombre_completo || '-'}</p>
+          <p className="text-sm text-gray-500">{tutor.usuario?.email || '-'}</p>
         </div>
       ),
     },
     {
+      key: 'dni',
+      label: 'DNI',
+      render: (tutor: Tutor) => tutor.dni,
+    },
+    {
       key: 'telefono',
       label: 'Teléfono',
-      render: (tutor: Tutor) => tutor.telefono || '-',
+      render: (tutor: Tutor) => tutor.usuario?.telefono || '-',
     },
     {
       key: 'direccion',
@@ -55,14 +242,14 @@ export default function TutoresPage() {
     {
       key: 'ciudad',
       label: 'Ciudad',
-      render: (tutor: Tutor) => tutor.ciudad || '-',
+      render: (tutor: Tutor) => `${tutor.ciudad}, ${tutor.provincia}`,
     },
     {
       key: 'estado',
       label: 'Estado',
       render: (tutor: Tutor) => (
-        <Badge variant={tutor.activo ? 'success' : 'danger'}>
-          {tutor.activo ? 'Activo' : 'Inactivo'}
+        <Badge variant={tutor.usuario?.activo ? 'success' : 'danger'}>
+          {tutor.usuario?.activo ? 'Activo' : 'Inactivo'}
         </Badge>
       ),
     },
@@ -70,9 +257,24 @@ export default function TutoresPage() {
       key: 'acciones',
       label: 'Acciones',
       render: (tutor: Tutor) => (
-        <Button size="sm" variant="outline" onClick={() => viewDetails(tutor)}>
-          Ver
-        </Button>
+        <div className="flex space-x-2">
+          <Button size="sm" variant="outline" onClick={() => viewDetails(tutor)}>
+            Ver
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => handleEdit(tutor)}>
+            Editar
+          </Button>
+          <Button
+            size="sm"
+            variant={tutor.usuario?.activo ? 'warning' : 'success'}
+            onClick={() => handleToggleStatus(tutor)}
+          >
+            {tutor.usuario?.activo ? 'Desactivar' : 'Activar'}
+          </Button>
+          <Button size="sm" variant="danger" onClick={() => handleDelete(tutor)}>
+            Eliminar
+          </Button>
+        </div>
       ),
     },
   ]
@@ -88,9 +290,14 @@ export default function TutoresPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Tutores</h1>
-        <p className="text-gray-600 mt-1">Administra los tutores de mascotas</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Gestión de Tutores</h1>
+          <p className="text-gray-600 mt-1">Administra los tutores de mascotas</p>
+        </div>
+        <Button onClick={handleCreate}>
+          Agregar Tutor
+        </Button>
       </div>
 
       {/* Stats */}
@@ -112,7 +319,7 @@ export default function TutoresPage() {
             <div>
               <p className="text-sm text-gray-600">Tutores Activos</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">
-                {tutores.filter(t => t.activo).length}
+                {tutores.filter(t => t.usuario?.activo).length}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -127,7 +334,6 @@ export default function TutoresPage() {
         columns={columns}
         data={tutores}
         keyExtractor={(tutor) => tutor.id}
-        emptyMessage="No hay tutores registrados"
       />
 
       {/* Detail Modal */}
@@ -142,19 +348,19 @@ export default function TutoresPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Nombre</p>
-                <p className="mt-1 text-sm text-gray-900">{selectedTutor.nombre || '-'}</p>
+                <p className="mt-1 text-sm text-gray-900">{selectedTutor.usuario?.nombre_completo || '-'}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Email</p>
-                <p className="mt-1 text-sm text-gray-900">{selectedTutor.email || '-'}</p>
+                <p className="mt-1 text-sm text-gray-900">{selectedTutor.usuario?.email || '-'}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Teléfono</p>
-                <p className="mt-1 text-sm text-gray-900">{selectedTutor.telefono || '-'}</p>
+                <p className="mt-1 text-sm text-gray-900">{selectedTutor.usuario?.telefono || '-'}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Documento</p>
-                <p className="mt-1 text-sm text-gray-900">{selectedTutor.documento || '-'}</p>
+                <p className="text-sm font-medium text-gray-500">DNI</p>
+                <p className="mt-1 text-sm text-gray-900">{selectedTutor.dni || '-'}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-sm font-medium text-gray-500">Dirección</p>
@@ -165,14 +371,14 @@ export default function TutoresPage() {
                 <p className="mt-1 text-sm text-gray-900">{selectedTutor.ciudad || '-'}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">País</p>
-                <p className="mt-1 text-sm text-gray-900">{selectedTutor.pais || '-'}</p>
+                <p className="text-sm font-medium text-gray-500">Provincia</p>
+                <p className="mt-1 text-sm text-gray-900">{selectedTutor.provincia || '-'}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Estado</p>
                 <div className="mt-1">
-                  <Badge variant={selectedTutor.activo ? 'success' : 'danger'}>
-                    {selectedTutor.activo ? 'Activo' : 'Inactivo'}
+                  <Badge variant={selectedTutor.usuario?.activo ? 'success' : 'danger'}>
+                    {selectedTutor.usuario?.activo ? 'Activo' : 'Inactivo'}
                   </Badge>
                 </div>
               </div>
@@ -180,6 +386,74 @@ export default function TutoresPage() {
           </div>
         </Modal>
       )}
+
+      {/* Form Modal */}
+      <Modal
+        isOpen={showFormModal}
+        onClose={() => setShowFormModal(false)}
+        title={isEditing ? 'Editar Tutor' : 'Nuevo Tutor'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Nombre Completo"
+              value={formData.nombre_completo}
+              onChange={(e) => setFormData({ ...formData, nombre_completo: e.target.value })}
+              required
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+              disabled={isEditing}
+            />
+            <Input
+              label="Teléfono"
+              value={formData.telefono}
+              onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+              required
+            />
+            <Input
+              label="DNI"
+              value={formData.dni}
+              onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+              required
+            />
+            <div className="col-span-2">
+              <Input
+                label="Dirección"
+                value={formData.direccion}
+                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                required
+              />
+            </div>
+            <Input
+              label="Ciudad"
+              value={formData.ciudad}
+              onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
+              required
+            />
+            <Input
+              label="Provincia"
+              value={formData.provincia}
+              onChange={(e) => setFormData({ ...formData, provincia: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowFormModal(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              {isEditing ? 'Actualizar' : 'Crear'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

@@ -10,6 +10,9 @@ import CitasPage from './views/pages/CitasPage'
 import HistoriasClinicasPage from './views/pages/HistoriasClinicasPage'
 import ProfesionalesPage from './views/pages/ProfesionalesPage'
 import InventarioPage from './views/pages/InventarioPage'
+import UsuariosRegistradosPage from './views/pages/UsuariosRegistradosPage'
+import LaboratorioPage from './views/pages/LaboratorioPage'
+import EcografiaPage from './views/pages/EcografiaPage'
 import Layout from './views/components/layout/Layout'
 
 function App() {
@@ -58,6 +61,9 @@ function App() {
             <Route path="/historias" element={<HistoriasClinicasPage />} />
             <Route path="/profesionales" element={<ProfesionalesPage />} />
             <Route path="/inventario" element={<InventarioPage />} />
+            <Route path="/usuarios-registrados" element={<UsuariosRegistradosPage />} />
+            <Route path="/laboratorio" element={<LaboratorioPage />} />
+            <Route path="/ecografia" element={<EcografiaPage />} />
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Route>
         ) : (

@@ -1,14 +1,33 @@
 import { useEffect, useState } from 'react'
 import { FarmacosController } from '../../controllers'
 import type { Farmaco } from '../../models'
-import { Card, Badge, Table, Modal, Button } from '../components/ui'
+import { Card, Badge, Table, Modal, Button, Input, Select } from '../components/ui'
 
 export default function InventarioPage() {
   const [farmacos, setFarmacos] = useState<Farmaco[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedFarmaco, setSelectedFarmaco] = useState<Farmaco | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showFormModal, setShowFormModal] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'low'>('all')
+
+  // Formulario
+  const [formData, setFormData] = useState({
+    nombre_comercial: '',
+    nombre_generico: '',
+    principio_activo: '',
+    laboratorio: '',
+    concentracion: '',
+    forma_farmaceutica: '',
+    via_administracion: [] as string[],
+    presentacion: '',
+    stock_total: 0,
+    stock_minimo: 10,
+    requiere_receta: false,
+    contraindicaciones: '',
+    activo: true,
+  })
 
   useEffect(() => {
     loadInventario()
@@ -28,6 +47,77 @@ export default function InventarioPage() {
   const viewDetails = (farmaco: Farmaco) => {
     setSelectedFarmaco(farmaco)
     setShowDetailModal(true)
+  }
+
+  const handleCreate = () => {
+    setIsEditing(false)
+    setFormData({
+      nombre_comercial: '',
+      nombre_generico: '',
+      principio_activo: '',
+      laboratorio: '',
+      concentracion: '',
+      forma_farmaceutica: '',
+      via_administracion: [],
+      presentacion: '',
+      stock_total: 0,
+      stock_minimo: 10,
+      requiere_receta: false,
+      contraindicaciones: '',
+      activo: true,
+    })
+    setShowFormModal(true)
+  }
+
+  const handleEdit = (farmaco: Farmaco) => {
+    setIsEditing(true)
+    setSelectedFarmaco(farmaco)
+    setFormData({
+      nombre_comercial: farmaco.nombre_comercial,
+      nombre_generico: farmaco.nombre_generico,
+      principio_activo: farmaco.principio_activo || '',
+      laboratorio: farmaco.laboratorio || '',
+      concentracion: farmaco.concentracion || '',
+      forma_farmaceutica: farmaco.forma_farmaceutica || '',
+      via_administracion: Array.isArray(farmaco.via_administracion) ? farmaco.via_administracion : [],
+      presentacion: farmaco.presentacion || '',
+      stock_total: farmaco.stock_total || 0,
+      stock_minimo: farmaco.stock_minimo,
+      requiere_receta: farmaco.requiere_receta,
+      contraindicaciones: farmaco.contraindicaciones || '',
+      activo: farmaco.activo,
+    })
+    setShowFormModal(true)
+  }
+
+  const handleDelete = async (farmaco: Farmaco) => {
+    if (!confirm(`¿Estás seguro de eliminar ${farmaco.nombre_comercial}?`)) return
+
+    try {
+      await FarmacosController.delete(farmaco.id)
+      loadInventario()
+    } catch (error) {
+      console.error('Error al eliminar:', error)
+      alert('Error al eliminar el medicamento')
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      if (isEditing && selectedFarmaco) {
+        await FarmacosController.update(selectedFarmaco.id, formData)
+      } else {
+        await FarmacosController.create(formData)
+      }
+
+      setShowFormModal(false)
+      loadInventario()
+    } catch (error) {
+      console.error('Error al guardar:', error)
+      alert('Error al guardar el medicamento')
+    }
   }
 
   const getEstadoStock = (farmaco: Farmaco) => {
@@ -87,9 +177,17 @@ export default function InventarioPage() {
       key: 'acciones',
       label: 'Acciones',
       render: (farmaco: Farmaco) => (
-        <Button size="sm" variant="outline" onClick={() => viewDetails(farmaco)}>
-          Ver
-        </Button>
+        <div className="flex space-x-2">
+          <Button size="sm" variant="outline" onClick={() => viewDetails(farmaco)}>
+            Ver
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => handleEdit(farmaco)}>
+            Editar
+          </Button>
+          <Button size="sm" variant="danger" onClick={() => handleDelete(farmaco)}>
+            Eliminar
+          </Button>
+        </div>
       ),
     },
   ]
@@ -107,9 +205,14 @@ export default function InventarioPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Inventario</h1>
-        <p className="text-gray-600 mt-1">Administra el stock de medicamentos y suministros</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Gestión de Inventario</h1>
+          <p className="text-gray-600 mt-1">Administra el stock de medicamentos y suministros</p>
+        </div>
+        <Button onClick={handleCreate}>
+          Agregar Medicamento
+        </Button>
       </div>
 
       {/* Stats */}
@@ -176,7 +279,6 @@ export default function InventarioPage() {
         columns={columns}
         data={filteredFarmacos}
         keyExtractor={(farmaco) => farmaco.id}
-        emptyMessage={filter === 'low' ? 'No hay medicamentos con stock bajo' : 'No hay medicamentos registrados'}
       />
 
       {/* Detail Modal */}
@@ -211,7 +313,12 @@ export default function InventarioPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Vía de Administración</p>
-                <p className="mt-1 text-sm text-gray-900">{selectedFarmaco.via_administracion || '-'}</p>
+                <p className="mt-1 text-sm text-gray-900">
+                  {Array.isArray(selectedFarmaco.via_administracion)
+                    ? selectedFarmaco.via_administracion.join(', ')
+                    : selectedFarmaco.via_administracion || '-'
+                  }
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Stock Total</p>
@@ -244,6 +351,129 @@ export default function InventarioPage() {
           </div>
         </Modal>
       )}
+
+      {/* Form Modal */}
+      <Modal
+        isOpen={showFormModal}
+        onClose={() => setShowFormModal(false)}
+        title={isEditing ? 'Editar Medicamento' : 'Nuevo Medicamento'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Nombre Comercial"
+              value={formData.nombre_comercial}
+              onChange={(e) => setFormData({ ...formData, nombre_comercial: e.target.value })}
+              required
+            />
+            <Input
+              label="Nombre Genérico"
+              value={formData.nombre_generico}
+              onChange={(e) => setFormData({ ...formData, nombre_generico: e.target.value })}
+              required
+            />
+            <Input
+              label="Principio Activo"
+              value={formData.principio_activo}
+              onChange={(e) => setFormData({ ...formData, principio_activo: e.target.value })}
+              required
+            />
+            <Input
+              label="Laboratorio"
+              value={formData.laboratorio}
+              onChange={(e) => setFormData({ ...formData, laboratorio: e.target.value })}
+            />
+            <Input
+              label="Concentración"
+              value={formData.concentracion}
+              onChange={(e) => setFormData({ ...formData, concentracion: e.target.value })}
+              placeholder="Ej: 500mg"
+            />
+            <Input
+              label="Forma Farmacéutica"
+              value={formData.forma_farmaceutica}
+              onChange={(e) => setFormData({ ...formData, forma_farmaceutica: e.target.value })}
+              placeholder="Ej: Comprimido, Jarabe"
+            />
+            <Input
+              label="Presentación"
+              value={formData.presentacion}
+              onChange={(e) => setFormData({ ...formData, presentacion: e.target.value })}
+              placeholder="Ej: Caja x 20"
+            />
+            <Select
+              label="Vía de Administración"
+              value={formData.via_administracion[0] || ''}
+              onChange={(e) => setFormData({ ...formData, via_administracion: [e.target.value] })}
+            >
+              <option value="">Seleccionar</option>
+              <option value="oral">Oral</option>
+              <option value="topica">Tópica</option>
+              <option value="inyectable">Inyectable</option>
+              <option value="oftálmica">Oftálmica</option>
+              <option value="ótica">Ótica</option>
+            </Select>
+            <Input
+              label="Stock Total"
+              type="number"
+              value={formData.stock_total}
+              onChange={(e) => setFormData({ ...formData, stock_total: parseInt(e.target.value) || 0 })}
+              required
+            />
+            <Input
+              label="Stock Mínimo"
+              type="number"
+              value={formData.stock_minimo}
+              onChange={(e) => setFormData({ ...formData, stock_minimo: parseInt(e.target.value) || 0 })}
+              required
+            />
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.requiere_receta}
+                onChange={(e) => setFormData({ ...formData, requiere_receta: e.target.checked })}
+                className="mr-2"
+              />
+              Requiere Receta
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.activo}
+                onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                className="mr-2"
+              />
+              Activo
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Contraindicaciones
+            </label>
+            <textarea
+              value={formData.contraindicaciones}
+              onChange={(e) => setFormData({ ...formData, contraindicaciones: e.target.value })}
+              className="input-field"
+              rows={3}
+              placeholder="Describe las contraindicaciones del medicamento"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowFormModal(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              {isEditing ? 'Actualizar' : 'Crear'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }
