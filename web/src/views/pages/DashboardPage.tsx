@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
+import { MascotasController, CitasController } from '../../controllers'
 
 interface Stats {
   totalMascotas: number
@@ -23,29 +23,17 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0]
-
-      const [mascotas, citas, citasHoy, pendientes] = await Promise.all([
-        supabase.from('mascotas').select('id', { count: 'exact' }).is('deleted_at', null),
-        supabase.from('citas').select('id', { count: 'exact' }).is('deleted_at', null),
-        supabase
-          .from('citas')
-          .select('id', { count: 'exact' })
-          .gte('fecha_hora', `${today}T00:00:00`)
-          .lte('fecha_hora', `${today}T23:59:59`)
-          .is('deleted_at', null),
-        supabase
-          .from('mascotas')
-          .select('id', { count: 'exact' })
-          .eq('estado', 'pendiente')
-          .is('deleted_at', null),
+      // ✅ Usando controladores MVC en lugar de queries directas
+      const [mascotasStats, citasStats] = await Promise.all([
+        MascotasController.getStats(),
+        CitasController.getStats(),
       ])
 
       setStats({
-        totalMascotas: mascotas.count || 0,
-        totalCitas: citas.count || 0,
-        citasHoy: citasHoy.count || 0,
-        mascotasPendientes: pendientes.count || 0,
+        totalMascotas: mascotasStats.total,
+        totalCitas: citasStats.total,
+        citasHoy: citasStats.hoy,
+        mascotasPendientes: mascotasStats.pendientes,
       })
     } catch (error) {
       console.error('Error loading stats:', error)

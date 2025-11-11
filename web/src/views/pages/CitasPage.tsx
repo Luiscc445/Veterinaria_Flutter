@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
-import { Cita } from '../types'
+import { CitasController } from '../../controllers'
+import type { Cita } from '../../models'
 import { format } from 'date-fns'
 
 export default function CitasPage() {
@@ -13,19 +13,9 @@ export default function CitasPage() {
 
   const loadCitas = async () => {
     try {
-      const { data, error } = await supabase
-        .from('citas')
-        .select(`
-          *,
-          mascota:mascotas(nombre, especie),
-          servicio:servicios(nombre)
-        `)
-        .is('deleted_at', null)
-        .order('fecha_hora', { ascending: false })
-        .limit(50)
-
-      if (error) throw error
-      setCitas(data || [])
+      // ✅ Usando controlador MVC
+      const data = await CitasController.getAll()
+      setCitas(data)
     } catch (error) {
       console.error('Error loading citas:', error)
     } finally {
@@ -35,12 +25,8 @@ export default function CitasPage() {
 
   const confirmarCita = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('citas')
-        .update({ estado: 'confirmada', fecha_confirmacion: new Date().toISOString() })
-        .eq('id', id)
-
-      if (error) throw error
+      // ✅ Usando controlador MVC
+      await CitasController.confirmar(id)
       loadCitas()
     } catch (error) {
       console.error('Error confirmando cita:', error)
@@ -54,6 +40,7 @@ export default function CitasPage() {
       en_sala: 'bg-purple-100 text-purple-800',
       atendida: 'bg-gray-100 text-gray-800',
       cancelada: 'bg-red-100 text-red-800',
+      reprogramada: 'bg-yellow-100 text-yellow-800',
     }
     return colors[estado] || 'bg-gray-100 text-gray-800'
   }
@@ -83,17 +70,17 @@ export default function CitasPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {citas.map((cita: any) => (
+            {citas.map((cita) => (
               <tr key={cita.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {format(new Date(cita.fecha_hora), 'dd/MM/yyyy HH:mm')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{cita.mascota?.nombre}</div>
-                  <div className="text-sm text-gray-500">{cita.mascota?.especie}</div>
+                  <div className="text-sm font-medium text-gray-900">{cita.mascota_nombre || '-'}</div>
+                  <div className="text-sm text-gray-500">{cita.mascota_especie || '-'}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {cita.servicio?.nombre}
+                  {cita.servicio_nombre || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${getEstadoColor(cita.estado)}`}>

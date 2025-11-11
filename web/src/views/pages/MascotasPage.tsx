@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
-import { Mascota } from '../types'
+import { MascotasController } from '../../controllers'
+import type { Mascota } from '../../models'
 
 export default function MascotasPage() {
   const [mascotas, setMascotas] = useState<Mascota[]>([])
@@ -13,20 +13,9 @@ export default function MascotasPage() {
 
   const loadMascotas = async () => {
     try {
-      let query = supabase
-        .from('mascotas')
-        .select('*')
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-
-      if (filter !== 'all') {
-        query = query.eq('estado', filter)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setMascotas(data || [])
+      // ✅ Usando controlador MVC
+      const data = await MascotasController.getAll(filter)
+      setMascotas(data)
     } catch (error) {
       console.error('Error loading mascotas:', error)
     } finally {
@@ -36,12 +25,8 @@ export default function MascotasPage() {
 
   const aprobarMascota = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('mascotas')
-        .update({ estado: 'aprobado', fecha_aprobacion: new Date().toISOString() })
-        .eq('id', id)
-
-      if (error) throw error
+      // ✅ Usando controlador MVC
+      await MascotasController.aprobar(id)
       loadMascotas()
     } catch (error) {
       console.error('Error aprobando mascota:', error)
@@ -50,12 +35,8 @@ export default function MascotasPage() {
 
   const rechazarMascota = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('mascotas')
-        .update({ estado: 'rechazado' })
-        .eq('id', id)
-
-      if (error) throw error
+      // ✅ Usando controlador MVC
+      await MascotasController.rechazar(id, 'Rechazado por administración')
       loadMascotas()
     } catch (error) {
       console.error('Error rechazando mascota:', error)

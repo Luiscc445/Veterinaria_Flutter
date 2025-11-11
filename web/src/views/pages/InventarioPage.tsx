@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
-import { Farmaco, LoteFarmaco } from '../types'
+import { FarmacosController } from '../../controllers'
+import type { Farmaco } from '../../models'
 
 export default function InventarioPage() {
   const [farmacos, setFarmacos] = useState<Farmaco[]>([])
-  const [lotes, setLotes] = useState<LoteFarmaco[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -13,16 +12,9 @@ export default function InventarioPage() {
 
   const loadInventario = async () => {
     try {
-      const [farmacosRes, lotesRes] = await Promise.all([
-        supabase.from('farmacos').select('*').is('deleted_at', null).limit(50),
-        supabase.from('lotes_farmacos').select('*').is('deleted_at', null).limit(50),
-      ])
-
-      if (farmacosRes.error) throw farmacosRes.error
-      if (lotesRes.error) throw lotesRes.error
-
-      setFarmacos(farmacosRes.data || [])
-      setLotes(lotesRes.data || [])
+      // ✅ Usando controlador MVC
+      const data = await FarmacosController.getAll()
+      setFarmacos(data)
     } catch (error) {
       console.error('Error loading inventario:', error)
     } finally {
@@ -30,14 +22,8 @@ export default function InventarioPage() {
     }
   }
 
-  const getStockTotal = (farmacoId: string) => {
-    return lotes
-      .filter((l) => l.farmaco_id === farmacoId && l.activo)
-      .reduce((sum, l) => sum + l.cantidad_actual, 0)
-  }
-
   const getEstadoStock = (farmaco: Farmaco) => {
-    const stockTotal = getStockTotal(farmaco.id)
+    const stockTotal = farmaco.stock_total || 0
     if (stockTotal === 0) return { label: 'Sin stock', color: 'bg-red-100 text-red-800' }
     if (stockTotal < farmaco.stock_minimo) return { label: 'Stock bajo', color: 'bg-yellow-100 text-yellow-800' }
     return { label: 'Normal', color: 'bg-green-100 text-green-800' }
@@ -69,7 +55,6 @@ export default function InventarioPage() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {farmacos.map((farmaco) => {
-              const stockTotal = getStockTotal(farmaco.id)
               const estadoStock = getEstadoStock(farmaco)
 
               return (
@@ -83,10 +68,12 @@ export default function InventarioPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {farmaco.laboratorio || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                    {stockTotal}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {farmaco.stock_total || 0}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{farmaco.stock_minimo}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {farmaco.stock_minimo}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs rounded-full ${estadoStock.color}`}>
                       {estadoStock.label}
