@@ -1,21 +1,15 @@
 import '../../../core/config/supabase_config.dart';
 import '../../../shared/models/mascota_model.dart';
 
-/// Servicio para gestionar mascotas
+/// Servicio para gestionar mascotas (Arquitectura MVC - Modelo)
+/// Este servicio usa funciones SQL seguras para evitar errores de permisos
 class MascotasService {
   /// Obtener todas las mascotas del tutor actual
+  /// Usa función SQL segura (get_my_mascotas) para evitar "permission denied"
   Future<List<MascotaModel>> obtenerMisMascotas() async {
     try {
-      // Obtener tutor_id usando la función helper con caché
-      final tutorId = await getCurrentTutorId();
-
-      // Obtener mascotas del tutor
-      final response = await supabase
-          .from('mascotas')
-          .select()
-          .eq('tutor_id', tutorId)
-          .isFilter('deleted_at', null)
-          .order('created_at', ascending: false);
+      // Llamar función SQL segura que maneja RLS internamente
+      final response = await supabase.rpc('get_my_mascotas');
 
       return (response as List)
           .map((json) => MascotaModel.fromJson(json))
@@ -42,23 +36,39 @@ class MascotasService {
   }
 
   /// Crear nueva mascota
-  Future<MascotaModel> crearMascota(Map<String, dynamic> data) async {
+  /// Usa función SQL segura (create_mascota) para evitar problemas de permisos
+  Future<String> crearMascota({
+    required String nombre,
+    required String especie,
+    String? raza,
+    String? sexo,
+    DateTime? fechaNacimiento,
+    double? pesoKg,
+    String? color,
+    String? microchip,
+    String? fotoUrl,
+    String? alergias,
+    String? condicionesPreexistentes,
+    bool esterilizado = false,
+  }) async {
     try {
-      // Obtener tutor_id usando la función helper con caché
-      final tutorId = await getCurrentTutorId();
+      // Llamar función SQL segura
+      final mascotaId = await supabase.rpc('create_mascota', params: {
+        'p_nombre': nombre,
+        'p_especie': especie,
+        'p_raza': raza,
+        'p_sexo': sexo,
+        'p_fecha_nacimiento': fechaNacimiento?.toIso8601String(),
+        'p_peso_kg': pesoKg,
+        'p_color': color,
+        'p_microchip': microchip,
+        'p_foto_url': fotoUrl,
+        'p_alergias': alergias,
+        'p_condiciones_preexistentes': condicionesPreexistentes,
+        'p_esterilizado': esterilizado,
+      });
 
-      // Agregar tutor_id a los datos
-      data['tutor_id'] = tutorId;
-      data['estado'] = 'pendiente';
-      data['activo'] = true;
-
-      final response = await supabase
-          .from('mascotas')
-          .insert(data)
-          .select()
-          .single();
-
-      return MascotaModel.fromJson(response);
+      return mascotaId as String;
     } catch (e) {
       throw Exception('Error al crear mascota: $e');
     }

@@ -1,48 +1,61 @@
 import '../../../core/config/supabase_config.dart';
 import '../../../shared/models/cita_model.dart';
 
-/// Servicio para gestionar citas
+/// Servicio para gestionar citas (Arquitectura MVC - Modelo)
+/// Este servicio usa funciones SQL seguras para evitar errores de permisos
 class CitasService {
   /// Obtener mis citas (tutor)
+  /// Usa función SQL segura (get_my_citas) para evitar "permission denied"
   Future<Map<String, List<CitaModel>>> obtenerMisCitas({String? estado}) async {
     try {
-      // Obtener tutor_id usando la función helper con caché
-      final tutorId = await getCurrentTutorId();
-
-      // Construir query
-      var query = supabase
-          .from('citas')
-          .select('''
-            *,
-            mascota:mascotas(id, nombre, especie, foto_url),
-            servicio:servicios(id, nombre, tipo, duracion_minutos, precio_base),
-            profesional:profesionales(
-              id,
-              user:users(nombre_completo),
-              especialidades
-            ),
-            consultorio:consultorios(id, nombre, numero)
-          ''')
-          .eq('tutor_id', tutorId);
-
-      if (estado != null) {
-        query = query.eq('estado', estado);
-      }
-
-      final response = await query.isFilter('deleted_at', null).order('fecha_hora', ascending: false);
+      // Llamar función SQL segura que maneja RLS internamente
+      final response = await supabase.rpc('get_my_citas');
 
       // Convertir a modelos
       final citas = (response as List)
-          .map((json) => CitaModel.fromJson(json))
+          .map((json) {
+            // Adaptar el formato de la función SQL a CitaModel
+            return CitaModel.fromJson({
+              'id': json['id'],
+              'mascota_id': json['mascota_id'],
+              'tutor_id': json['tutor_id'],
+              'servicio_id': json['servicio_id'],
+              'profesional_id': json['profesional_id'],
+              'consultorio_id': json['consultorio_id'],
+              'fecha_hora': json['fecha_hora'],
+              'fecha_hora_fin': json['fecha_hora_fin'],
+              'estado': json['estado'],
+              'motivo_consulta': json['motivo_consulta'],
+              'observaciones': json['observaciones'],
+              'created_at': json['created_at'],
+              'mascota': {
+                'nombre': json['mascota_nombre'],
+                'especie': json['mascota_especie'],
+              },
+              'servicio': {
+                'nombre': json['servicio_nombre'],
+              },
+              'profesional': {
+                'user': {
+                  'nombre_completo': json['profesional_nombre'],
+                }
+              }
+            });
+          })
           .toList();
+
+      // Filtrar por estado si se especificó
+      final citasFiltradas = estado != null
+          ? citas.where((c) => c.estado == estado).toList()
+          : citas;
 
       // Separar en próximas y pasadas
       final ahora = DateTime.now();
-      final proximas = citas
+      final proximas = citasFiltradas
           .where((c) =>
               c.fechaHora.isAfter(ahora) && c.estado != 'cancelada')
           .toList();
-      final pasadas = citas
+      final pasadas = citasFiltradas
           .where((c) =>
               c.fechaHora.isBefore(ahora) ||
               c.estado == 'cancelada' ||
@@ -84,22 +97,25 @@ class CitasService {
   }
 
   /// Crear nueva cita
-  Future<CitaModel> crearCita(Map<String, dynamic> data) async {
+  /// Usa función SQL segura (create_cita) para evitar problemas de permisos
+  Future<String> crearCita({
+    required String mascotaId,
+    required String servicioId,
+    required String profesionalId,
+    required DateTime fechaHora,
+    String? motivoConsulta,
+  }) async {
     try {
-      // Obtener tutor_id usando la función helper con caché
-      final tutorId = await getCurrentTutorId();
+      // Llamar función SQL segura
+      final citaId = await supabase.rpc('create_cita', params: {
+        'p_mascota_id': mascotaId,
+        'p_servicio_id': servicioId,
+        'p_profesional_id': profesionalId,
+        'p_fecha_hora': fechaHora.toIso8601String(),
+        'p_motivo_consulta': motivoConsulta,
+      });
 
-      // Agregar tutor_id
-      data['tutor_id'] = tutorId;
-      data['estado'] = 'reservada';
-
-      final response = await supabase
-          .from('citas')
-          .insert(data)
-          .select()
-          .single();
-
-      return CitaModel.fromJson(response);
+      return citaId as String;
     } catch (e) {
       throw Exception('Error al crear cita: $e');
     }
@@ -223,4 +239,3 @@ class CitasService {
     }
   }
 }
-
