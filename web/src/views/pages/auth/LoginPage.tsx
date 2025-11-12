@@ -2,11 +2,54 @@ import { useState, FormEvent } from 'react'
 import { supabase } from '../../../services/supabase'
 import { useNavigate } from 'react-router-dom'
 
+type ViewOption = {
+  id: string
+  label: string
+  icon: string
+  description: string
+  path: string
+  sessionType: string
+  allowedRoles: string[]
+}
+
+const viewOptions: ViewOption[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard Veterinario',
+    icon: '🏥',
+    description: 'Vista completa del sistema',
+    path: '/dashboard',
+    sessionType: 'veterinario',
+    allowedRoles: ['admin', 'medico', 'recepcion']
+  },
+  {
+    id: 'laboratorio',
+    label: 'Laboratorio',
+    icon: '🔬',
+    description: 'Gestión de análisis y resultados',
+    path: '/laboratorio',
+    sessionType: 'laboratorio',
+    allowedRoles: ['admin', 'laboratorista']
+  },
+  {
+    id: 'ecografia',
+    label: 'Ecografía',
+    icon: '📡',
+    description: 'Gestión de estudios ecográficos',
+    path: '/ecografia',
+    sessionType: 'ecografia',
+    allowedRoles: ['admin', 'ecografista']
+  }
+]
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showViewSelector, setShowViewSelector] = useState(false)
+  const [userRole, setUserRole] = useState<string>('')
+  const [availableViews, setAvailableViews] = useState<ViewOption[]>([])
   const navigate = useNavigate()
 
   const handleLogin = async (e: FormEvent) => {
@@ -40,55 +83,105 @@ export default function LoginPage() {
         throw new Error('Tu cuenta está desactivada. Contacta al administrador.')
       }
 
-      // 4. Redirigir según el rol REAL del usuario
+      // 4. Verificar que no sea un tutor
+      if (userData.rol === 'tutor') {
+        await supabase.auth.signOut()
+        throw new Error('Los tutores deben usar la aplicación móvil. Este es el panel administrativo.')
+      }
+
+      // 5. Guardar el rol y filtrar vistas disponibles
       const rol = userData.rol
+      localStorage.setItem('userRole', rol)
+      setUserRole(rol)
 
-      switch (rol) {
-        case 'admin':
-        case 'medico':
-          // Admin y médicos van al dashboard completo (menú veterinario)
-          localStorage.setItem('sessionType', 'veterinario')
-          localStorage.setItem('userRole', rol)
-          navigate('/dashboard')
-          break
+      // Filtrar vistas disponibles según el rol
+      const available = viewOptions.filter(view => view.allowedRoles.includes(rol))
+      setAvailableViews(available)
 
-        case 'laboratorista':
-          // Laboratoristas van a vista de laboratorio
-          localStorage.setItem('sessionType', 'laboratorio')
-          localStorage.setItem('userRole', rol)
-          navigate('/laboratorio')
-          break
-
-        case 'ecografista':
-          // Ecografistas van a vista de ecografía
-          localStorage.setItem('sessionType', 'ecografia')
-          localStorage.setItem('userRole', rol)
-          navigate('/ecografia')
-          break
-
-        case 'recepcion':
-          // Recepción va al dashboard
-          localStorage.setItem('sessionType', 'veterinario')
-          localStorage.setItem('userRole', rol)
-          navigate('/dashboard')
-          break
-
-        case 'tutor':
-          // Los tutores NO deberían acceder al dashboard web
-          await supabase.auth.signOut()
-          throw new Error('Los tutores deben usar la aplicación móvil. Este es el panel administrativo.')
-
-        default:
-          await supabase.auth.signOut()
-          throw new Error(`Rol no reconocido: ${rol}`)
+      // Si solo hay una vista disponible, ir directamente
+      if (available.length === 1) {
+        selectView(available[0])
+      } else {
+        // Mostrar selector de vistas
+        setShowViewSelector(true)
+        setLoading(false)
       }
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión')
-    } finally {
       setLoading(false)
     }
   }
 
+  const selectView = (view: ViewOption) => {
+    localStorage.setItem('sessionType', view.sessionType)
+    localStorage.setItem('userRole', userRole)
+    navigate(view.path)
+  }
+
+  const handleBackToLogin = () => {
+    setShowViewSelector(false)
+    setAvailableViews([])
+    setUserRole('')
+    supabase.auth.signOut()
+  }
+
+  // Vista selector de accesos
+  if (showViewSelector) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 px-4">
+        <div className="max-w-4xl w-full">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
+                <span className="text-4xl">🐾</span>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900">Selecciona tu Vista</h1>
+              <p className="text-gray-600 mt-2">Elige desde dónde quieres trabajar hoy</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {availableViews.map((view) => (
+                <button
+                  key={view.id}
+                  onClick={() => selectView(view)}
+                  className="group relative bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-6 hover:border-primary-500 hover:shadow-lg transition-all duration-200 text-left"
+                >
+                  <div className="text-center mb-4">
+                    <div className="text-5xl mb-3">{view.icon}</div>
+                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors">
+                      {view.label}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-gray-600 text-center">
+                    {view.description}
+                  </p>
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={handleBackToLogin}
+                className="text-gray-600 hover:text-gray-900 transition-colors flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Cerrar sesión</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Vista de login
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 px-4">
       <div className="max-w-md w-full">
