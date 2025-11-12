@@ -2,6 +2,14 @@ import { useState, FormEvent } from 'react'
 import { supabase } from '../../../services/supabase'
 import { useNavigate } from 'react-router-dom'
 
+type RoleOption = {
+  id: string
+  label: string
+  icon: string
+  description: string
+  color: string
+}
+
 type ViewOption = {
   id: string
   label: string
@@ -11,6 +19,44 @@ type ViewOption = {
   sessionType: string
   allowedRoles: string[]
 }
+
+const roleOptions: RoleOption[] = [
+  {
+    id: 'admin',
+    label: 'Administrador',
+    icon: '🔐',
+    description: 'Acceso total al sistema',
+    color: 'from-red-500 to-red-600'
+  },
+  {
+    id: 'medico',
+    label: 'Veterinario',
+    icon: '👨‍⚕️',
+    description: 'Gestión clínica y consultas',
+    color: 'from-green-500 to-green-600'
+  },
+  {
+    id: 'laboratorista',
+    label: 'Laboratorista',
+    icon: '🔬',
+    description: 'Gestión de análisis',
+    color: 'from-yellow-500 to-yellow-600'
+  },
+  {
+    id: 'ecografista',
+    label: 'Ecografista',
+    icon: '📡',
+    description: 'Estudios ecográficos',
+    color: 'from-purple-500 to-purple-600'
+  },
+  {
+    id: 'recepcion',
+    label: 'Recepción',
+    icon: '📋',
+    description: 'Gestión de citas y tutores',
+    color: 'from-blue-500 to-blue-600'
+  }
+]
 
 const viewOptions: ViewOption[] = [
   {
@@ -43,14 +89,29 @@ const viewOptions: ViewOption[] = [
 ]
 
 export default function LoginPage() {
+  const [step, setStep] = useState<'role' | 'login' | 'view'>('role')
+  const [selectedRole, setSelectedRole] = useState<string>('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showViewSelector, setShowViewSelector] = useState(false)
   const [userRole, setUserRole] = useState<string>('')
   const [availableViews, setAvailableViews] = useState<ViewOption[]>([])
   const navigate = useNavigate()
+
+  const handleRoleSelect = (roleId: string) => {
+    setSelectedRole(roleId)
+    setStep('login')
+    setError(null)
+  }
+
+  const handleBackToRoleSelector = () => {
+    setStep('role')
+    setSelectedRole('')
+    setEmail('')
+    setPassword('')
+    setError(null)
+  }
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
@@ -89,7 +150,13 @@ export default function LoginPage() {
         throw new Error('Los tutores deben usar la aplicación móvil. Este es el panel administrativo.')
       }
 
-      // 5. Guardar el rol y filtrar vistas disponibles
+      // 5. Verificar que el rol seleccionado coincida con el rol del usuario
+      if (userData.rol !== selectedRole) {
+        await supabase.auth.signOut()
+        throw new Error(`Este usuario no tiene permisos de ${roleOptions.find(r => r.id === selectedRole)?.label}. Tu rol es: ${roleOptions.find(r => r.id === userData.rol)?.label}`)
+      }
+
+      // 6. Guardar el rol y filtrar vistas disponibles
       const rol = userData.rol
       localStorage.setItem('userRole', rol)
       setUserRole(rol)
@@ -103,7 +170,7 @@ export default function LoginPage() {
         selectView(available[0])
       } else {
         // Mostrar selector de vistas
-        setShowViewSelector(true)
+        setStep('view')
         setLoading(false)
       }
     } catch (err: any) {
@@ -119,14 +186,149 @@ export default function LoginPage() {
   }
 
   const handleBackToLogin = () => {
-    setShowViewSelector(false)
+    setStep('login')
     setAvailableViews([])
     setUserRole('')
     supabase.auth.signOut()
   }
 
-  // Vista selector de accesos
-  if (showViewSelector) {
+  // PASO 1: Selector de Rol
+  if (step === 'role') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 px-4 py-8">
+        <div className="max-w-6xl w-full">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-100 rounded-full mb-4">
+                <span className="text-5xl">🐾</span>
+              </div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">RamboPet</h1>
+              <h2 className="text-2xl font-semibold text-gray-700 mb-2">Sistema de Gestión Veterinaria</h2>
+              <p className="text-gray-600">Selecciona tu rol para continuar</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {roleOptions.map((role) => (
+                <button
+                  key={role.id}
+                  onClick={() => handleRoleSelect(role.id)}
+                  className="group relative bg-white border-2 border-gray-200 rounded-2xl p-8 hover:border-transparent hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${role.color} opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300`}></div>
+
+                  <div className="relative z-10">
+                    <div className="text-center mb-4">
+                      <div className="text-6xl mb-4 transform group-hover:scale-110 transition-transform duration-300">
+                        {role.icon}
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 group-hover:text-white transition-colors mb-2">
+                        {role.label}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-600 group-hover:text-white transition-colors text-center">
+                      {role.description}
+                    </p>
+
+                    <div className="mt-6 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-500">Panel Administrativo - Solo personal autorizado</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // PASO 2: Login con rol seleccionado
+  if (step === 'login') {
+    const selectedRoleInfo = roleOptions.find(r => r.id === selectedRole)
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            {/* Botón volver */}
+            <button
+              onClick={handleBackToRoleSelector}
+              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-6"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="text-sm">Cambiar rol</span>
+            </button>
+
+            <div className="text-center mb-8">
+              <div className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br ${selectedRoleInfo?.color} rounded-full mb-4`}>
+                <span className="text-4xl">{selectedRoleInfo?.icon}</span>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900">Acceso {selectedRoleInfo?.label}</h1>
+              <p className="text-gray-600 mt-2">{selectedRoleInfo?.description}</p>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Correo electrónico
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="tu@email.com"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Contraseña
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full bg-gradient-to-r ${selectedRoleInfo?.color} text-white py-3 rounded-lg text-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // PASO 3: Selector de vista (solo para admin)
+  if (step === 'view') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 px-4">
         <div className="max-w-4xl w-full">
@@ -181,73 +383,6 @@ export default function LoginPage() {
     )
   }
 
-  // Vista de login
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 px-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-              <svg className="w-10 h-10 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">RamboPet</h1>
-            <p className="text-gray-600 mt-2">Sistema de Gestión Veterinaria</p>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Correo electrónico
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="tu@email.com"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary-600 text-white py-3 rounded-lg text-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">Panel Administrativo</p>
-            <p className="text-xs text-gray-500 mt-1">Solo personal autorizado</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  // Fallback (no debería llegar aquí)
+  return null
 }
